@@ -110,7 +110,7 @@ Your analyzer should flag these.
 
 ### **5. `requester_id` / `completer_id`**
 
-* **`requester_id`:** PCIe device sending the request (format: bus:device.function)
+* **`requester_id`:** PCIe device sending the request (format: `bus:device.function`)
 * **`completer_id`:** Device completing the request (null if request is outbound)
 
 **Valid Cases:**
@@ -170,7 +170,12 @@ Your analyzer should flag these.
 
 ### **9. `status`**
 
-* Completion status: `"SC"` (Success), `"UR"` (Unsupported Request), `"CA"` (Completer Abort), `"TO"` (Timeout), `"Success"`
+* Completion status: 
+   * `"SC"` (Success)
+   * `"UR"` (Unsupported Request)
+   * `"CA"` (Completer Abort)
+   * `"TO"` (Timeout)
+
 * Only for **Cpl/CplD**
 * MRd/MWr status = null
 
