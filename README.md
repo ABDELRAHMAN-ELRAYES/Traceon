@@ -15,7 +15,7 @@ Traceon is built in **C++** for the backend, **Qt** for the GUI, and uses **Pyth
 * Provide real-time and post-analysis visualization
 * Support automated regression testing and error injection
 * Enable system-level modeling using TLM/SystemC
-* Support multiple protocols (PCIe Gen4/5, CXL, NVMe) via a plugin architecture
+* Support multiple protocols (PCIe Gen3+, CXL, NVMe) via a plugin architecture
 
 ---
 
@@ -97,7 +97,7 @@ Traceon/
 1. **Clone Repository**
 
 ```bash
-git clone https://github.com/<your-username>/Traceon.git
+git clone https://github.com/ABDELRAHMAN-ELRAYES/Traceon.git
 cd Traceon
 ```
 
@@ -112,7 +112,7 @@ cd Traceon
 
 ```bash
 mkdir build && cd build
-cmake ..
+cmake ../
 make
 ```
 
