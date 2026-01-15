@@ -8,34 +8,32 @@ Regardless of type, you will always need:
 
 ### Core Identity
 
-* timestamp
-* direction
-* original packet index
+- timestamp
+- direction
+- original packet index
 
 ### Header Fields
 
-* fmt
-* type
-* length (DW)
-* requester ID
-* tag
+- fmt
+- type
+- length (DW)  `null`
+- requester ID
+- tag
 
 ### Address / Routing
 
-* address (if applicable)
-* completer ID (if applicable)
+- address (if applicable)  `null`
+- completer ID (if applicable)  `null`
 
 ### Payload Info
 
-* has_data
-* byte_count (for completions)
+- has_data
+- byte_count (for completions)  `null`
 
 ### Decode Status
 
-Very important:
-
-* `is_malformed`
-* `decode_errors[]`
+- `is_malformed`
+- `decode_errors[]`
 
 Because:
 
@@ -49,11 +47,11 @@ Malformed packets should still flow into validator.
 
 Every TLP must be classified into:
 
-* MRd
-* MWr
-* Cpl
-* CplD
-* Unsupported / Reserved
+- MRd
+- MWr
+- Cpl
+- CplD
+- Unsupported / Reserved
 
 Because validation rules depend on class:
 
@@ -82,29 +80,29 @@ At minimum:
 
 Keyed by:
 
-* requester_id
-* tag
+- requester_id
+- tag
 
 Stores:
 
-* request type
-* address
-* length
-* timestamp
+- request type
+- address
+- length
+- timestamp
 
 ### Completion Matching Logic
 
 When completion arrives:
 
-* does matching request exist?
-* is byte count correct?
-* is it duplicate?
+- does matching request exist?
+- is byte count correct?
+- is it duplicate?
 
 ### End-of-Trace Check
 
 After file ends:
 
-* any requests still pending → error
+- any requests still pending → error
 
 You should literally write:
 
@@ -120,23 +118,22 @@ Before implementation, define exact error classes:
 
 ### Structural (Decode Layer)
 
-* invalid header length
-* unsupported fmt/type
-* truncated packet
+- invalid header length
+- unsupported fmt/type
+- truncated packet
 
 ### Protocol Violations
 
-* completion without request
-* missing completion
-* tag reuse while outstanding
-* misaligned address
-* invalid length
+- completion without request
+- missing completion
+- tag reuse while outstanding
+- misaligned address
+- invalid length
 
 Each error must include:
 
-* packet index
-* rule name
-* description
+- packet index
+- rule name
+- description
 
 This prevents messy ad-hoc errors later.
-

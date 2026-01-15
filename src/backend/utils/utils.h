@@ -1,4 +1,4 @@
-#include "../core/packet/Packet.h"
+#include "../core/packet/packet.h"
 #include <string>
 
 namespace Utils

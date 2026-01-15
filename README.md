@@ -10,12 +10,12 @@ Traceon is built in **C++** for the backend, **Qt** for the GUI, and uses **Pyth
 
 ## **Goals**
 
-* Parse and decode raw PCIe/CXL trace files or live streams
-* Detect protocol violations (CRC errors, ordering violations, timing issues)
-* Provide real-time and post-analysis visualization
-* Support automated regression testing and error injection
-* Enable system-level modeling using TLM/SystemC
-* Support multiple protocols (PCIe Gen3+, CXL, NVMe) via a plugin architecture
+- Parse and decode raw PCIe/CXL trace files or live streams
+- Detect protocol violations (CRC errors, ordering violations, timing issues)
+- Provide real-time and post-analysis visualization
+- Support automated regression testing and error injection
+- Enable system-level modeling using TLM/SystemC
+- Support multiple protocols (PCIe Gen3+, CXL, NVMe) via a plugin architecture
 
 ---
 
@@ -29,7 +29,7 @@ Traceon is built in **C++** for the backend, **Qt** for the GUI, and uses **Pyth
 | **Phase 4 — Concurrency & Live Data Processing**                            | `QueueManager`, multithreading infrastructure                      | Thread-safe live trace processing with asynchronous GUI updates                    |
 | **Phase 5 — Transaction-Level Modeling (TLM) & Virtual System Integration** | `TLMIntegration.h/cpp`                                             | TLM/SystemC models for simulated traffic alongside real traces                     |
 | **Phase 6 — Error Injection & Fault Modeling**                              | Python/Tcl test harness integration with backend validation        | Stress testing, invalid packet injection, root-cause analysis                      |
-| **Phase 7 — Multi-Protocol & Cross-Domain Modeling**                        | `PacketFactory` modular backend                                    | Plugin-based support for PCIe Gen4/5, CXL, NVMe, and future interconnect protocols |
+| **Phase 7 — Multi-Protocol & Cross-Domain Modeling**                        | `PacketDecoder` modular backend                                    | Plugin-based support for PCIe Gen4/5, CXL, NVMe, and future interconnect protocols |
 
 ---
 
@@ -39,7 +39,7 @@ Traceon is built in **C++** for the backend, **Qt** for the GUI, and uses **Pyth
 
 | Layer                      | Modules                                                                    | Responsibilities                                                                |
 | -------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| **Backend**                | `Packet`, `TLP`, `CXLPacket`, `Validator`, `QueueManager`, `PacketFactory` | Parse and validate traffic, manage thread-safe queues, modular protocol support |
+| **Backend**                | `Packet`, `TLP`, `CXLPacket`, `Validator`, `QueueManager`, `PacketDecoder` | Parse and validate traffic, manage thread-safe queues, modular protocol support |
 | **GUI**                    | `MainFrame`, `PacketTablePanel`, `ProtocolTreePanel`, `StatsPanel`         | Display packets, filter and sort, protocol tree, statistics, async updates      |
 | **Automation / Scripting** | `PythonAPI.cpp`, `TclAPI.cpp`                                              | Automated testing, error injection, report generation                           |
 | **Simulation / TLM**       | `TLMIntegration.h/cpp`                                                     | Transaction-level modeling for early-stage verification                         |
@@ -60,8 +60,8 @@ Traceon/
 │  │  ├─ validation/
 │  │  │  ├─ Validator.h / Validator.cpp
 │  │  │  └─ QueueManager.h / QueueManager.cpp
-│  │  └─ factory/
-│  │     └─ PacketFactory.h / PacketFactory.cpp
+│  │  └─ decoder/
+│  │     └─ packet_decoder.h / packet_decoder.cpp
 │  ├─ gui/
 │  │  ├─ MainFrame.h / MainFrame.cpp
 │  │  ├─ Panels/
@@ -103,10 +103,10 @@ cd Traceon
 
 2. **Install Dependencies**
 
-* GCC / Clang (C++17 support)
-* CMake
-* Qt
-* Python 3.x / Tcl
+- GCC / Clang (C++17 support)
+- CMake
+- Qt
+- Python 3.x / Tcl
 
 3. **Build Project**
 
@@ -124,9 +124,9 @@ make
 
 5. **Load Trace Files**
 
-* Import sample PCIe/CXL trace files
-* Inspect packets in the GUI
-* Verify protocol compliance and errors
+- Import sample PCIe/CXL trace files
+- Inspect packets in the GUI
+- Verify protocol compliance and errors
 
 ---
 
@@ -148,9 +148,8 @@ The **MVP** can be created using **Phase 1–2**, after which the remaining phas
 
 ## **Contribution Guidelines**
 
-* Follow C++ OOP principles and modular design
-* Document classes and modules clearly
-* Implement unit tests for backend and GUI modules
-* Keep GUI isolated from backend logic
-* Use Python/Tcl scripts for automated regression testing
-
+- Follow C++ OOP principles and modular design
+- Document classes and modules clearly
+- Implement unit tests for backend and GUI modules
+- Keep GUI isolated from backend logic
+- Use Python/Tcl scripts for automated regression testing

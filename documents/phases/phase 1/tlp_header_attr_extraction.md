@@ -1,3 +1,389 @@
+# PCIe TLP Header Structure (Transaction Layer)
+
+A TLP consists of:
+
+* Header: **3DW (12B) or 4DW (16B)**
+* Optional Data Payload
+
+Which header is used depends on:
+
+* Address size (32 vs 64 bit)
+* Whether data is present
+
+---
+
+# DWORD 0 — Format, Type, Length
+
+### DW0 Bit Layout
+
+```
+31..29  Fmt
+28..24  Type
+23      Reserved
+22..20  TC
+19..16  Reserved
+15      TD
+14      EP
+13..12  Attr
+11..10  Reserved
+9..0    Length (in DW)
+```
+
+---
+
+## Fmt (Format) — bits [31:29]
+
+Determines:
+
+* Header size
+* Whether payload exists
+
+| Fmt    | Meaning        | Header | Has Data |
+| ------ | -------------- | ------ | -------- |
+| 000    | 3DW, no data   | 12B    | No       |
+| 001    | 4DW, no data   | 16B    | No       |
+| 010    | 3DW, with data | 12B    | Yes      |
+| 011    | 4DW, with data | 16B    | Yes      |
+| others | **Illegal**    | —      | —        |
+
+### Malformed if:
+
+* Fmt ≥ 100
+
+---
+
+## Type — bits [28:24]
+
+Interpreted together with Fmt.
+
+### Common Encodings
+
+| Type  | Meaning                   |
+| ----- | ------------------------- |
+| 00000 | Memory Read (MRd)         |
+| 00001 | Memory Write (MWr)        |
+| 01010 | Completion (Cpl)          |
+| 01011 | Completion w/ Data (CplD) |
+
+⚠ But Completion vs Completion with Data must match Fmt.
+
+### Examples:
+
+* MRd must be **no data**
+* MWr must be **with data**
+* Cpl must be **no data**
+* CplD must be **with data**
+
+Mismatch → malformed.
+
+---
+
+## TC (Traffic Class) — bits [22:20]
+
+Range:
+
+* 0–7
+
+Used for QoS.
+
+Usually ignore for validation, but must be extracted.
+
+---
+
+## Attr — bits [13:12]
+
+Two independent flags:
+
+| Bit | Meaning          |
+| --- | ---------------- |
+| 13  | No Snoop         |
+| 12  | Relaxed Ordering |
+
+So values:
+
+| Attr | Meaning       |
+| ---- | ------------- |
+| 00   | default       |
+| 01   | RO            |
+| 10   | No Snoop      |
+| 11   | No Snoop + RO |
+
+Your JSON:
+
+```json
+"attr": { "no_snoop": true, "relaxed_ordering": false }
+```
+
+---
+
+## Length — bits [9:0]
+
+Payload length in **DWORDs**.
+
+Rules:
+
+* For no-data packets: must be **0**
+* For data packets: must be ≥ 1
+
+Special case:
+
+* Length=0 means **1024 DW** (PCIe spec quirk)
+
+Malformed if:
+
+* MRd has nonzero length
+* MWr has zero length
+
+---
+
+# DWORD 1 — Requester or Completer Info
+
+Depends on packet type.
+
+---
+
+## For Requests (MRd, MWr)
+
+### DW1 Layout
+
+```
+31..16 Requester ID
+15..8  Tag
+7..4   Last BE
+3..0   First BE
+```
+
+---
+
+### Requester ID
+
+16-bit:
+
+```
+Bus[15:8] : Device[7:3] : Function[2:0]
+```
+
+Example:
+
+```
+0000:03:00.0
+```
+
+Used to match completions.
+
+---
+
+### Tag
+
+8-bit ID.
+
+Used to match:
+
+* MRd → Cpl / CplD
+
+Rules:
+
+* Must be echoed in completion
+* Multiple outstanding allowed with different tags
+
+---
+
+### Byte Enables
+
+Which bytes in first/last DW are valid.
+
+Often ignored in Phase 1, but should still be decoded.
+
+Malformed if:
+
+* All BE bits are zero
+
+---
+
+## For Completions (Cpl / CplD)
+
+### DW1 Layout
+
+```
+31..16 Completer ID
+15..13 Status
+12     BCM
+11..0  Byte Count
+```
+
+---
+
+### Status
+
+| Value  | Meaning                     |
+| ------ | --------------------------- |
+| 000    | Successful Completion (SC)  |
+| 001    | Unsupported Request (UR)    |
+| 010    | Configuration Request Retry |
+| others | Reserved → malformed        |
+
+---
+
+### Byte Count
+
+Number of valid data bytes returned.
+
+Rules:
+
+* Must be > 0 for CplD
+* Must match request length
+
+Mismatch → validation error (not malformed).
+
+---
+
+# DWORD 2 — Address or Lower Address
+
+---
+
+## For Requests
+
+### DW2
+
+* If 3DW header → bits [31:2] = Address[31:2]
+* If 4DW header → upper address in DW2, lower in DW3
+
+Rules:
+
+* Must be naturally aligned
+* For MRd/MWr: alignment must match payload size
+
+Misalignment → validation error.
+
+---
+
+## For Completions
+
+DW2 contains:
+
+* Lower address bits of the request
+
+Used for alignment checks.
+
+---
+
+# Payload
+
+Only if Fmt indicates data.
+
+Size:
+
+```
+Length × 4 bytes
+```
+
+Malformed if:
+
+* Payload shorter than expected
+
+---
+
+# Decode Errors vs Validation Errors
+
+This distinction is critical.
+
+---
+
+## ❌ Malformed (Decode Errors)
+
+Detected during parsing:
+
+| Error                        | Example                |
+| ---------------------------- | ---------------------- |
+| Illegal Fmt                  | Fmt = 101              |
+| Header too short             | only 8 bytes           |
+| MRd with data Fmt            | impossible combination |
+| Length mismatch with payload | truncated packet       |
+| Illegal status code          | Cpl status = 111       |
+
+These go in:
+
+```
+is_malformed = true
+decode_errors[]
+```
+
+These packets should NOT enter validator logic.
+
+---
+
+## ⚠ Validation Errors (Protocol Errors)
+
+Detected after successful decode:
+
+| Error                 | Example                      |
+| --------------------- | ---------------------------- |
+| Missing completion    | MRd never completed          |
+| Unexpected completion | Cpl with no matching request |
+| Duplicate completion  | same tag twice               |
+| Wrong byte count      | partial data                 |
+| Address misalignment  | violates spec                |
+
+These are protocol rule violations.
+
+---
+
+# 🔍 Example Walkthrough (Conceptual)
+
+Raw bytes:
+
+```
+00 00 00 04  03 00 0F 00  00 00 10 00
+```
+
+DW0:
+
+* Fmt = 000 → 3DW no data
+* Type = 00000 → MRd
+* Length = 4 → ❌ illegal (MRd must have no data)
+
+→ malformed
+
+---
+
+Another:
+
+DW0:
+
+* Fmt = 010 → 3DW with data
+* Type = 00001 → MWr
+* Length = 8 → OK
+
+Then:
+
+* Decode Requester ID
+* Decode Tag
+* Decode Address
+
+Then check payload length.
+
+---
+
+# Mapping to Your JSON Fields
+
+| JSON Field            | Source             |
+| --------------------- | ------------------ |
+| type                  | Fmt + Type         |
+| header_fmt            | Fmt                |
+| tc                    | DW0[22:20]         |
+| attr.no_snoop         | DW0[13]            |
+| attr.relaxed_ordering | DW0[12]            |
+| requester_id          | DW1[31:16]         |
+| completer_id          | DW1[31:16] for Cpl |
+| tag                   | DW1[15:8]          |
+| address               | DW2 / DW3          |
+| length_dw             | DW0[9:0]           |
+| byte_count            | DW1[11:0]          |
+| status                | DW1[15:13]         |
+
+
+---
+
 ### Scenario A: Request (Memory Write - MWr)
 
 **Input String:**

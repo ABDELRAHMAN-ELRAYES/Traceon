@@ -20,20 +20,24 @@
 
 - fmt
 - type
-- length (DW)
+- length (DW) `null`
 - requester ID
 - tag
 
 ### Address / Routing
 
-- address (if applicable)
-- completer ID (if applicable)
+- address (if applicable) `null`
+- completer ID (if applicable) `null`
 
 ### Payload Info
 
 - has_data
-- byte_count (for completions)
-- status (for completions)
+- byte_count (for completions) `null`
+- status (for completions -> ) `null`
+  - `"SC"` (Success)
+  - `"UR"` (Unsupported Request)
+  - `"CA"` (Completer Abort)
+  - `"TO"` (Timeout)
 
 ### Decode Status
 

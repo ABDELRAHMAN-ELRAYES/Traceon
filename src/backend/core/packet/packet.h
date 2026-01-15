@@ -19,7 +19,7 @@ enum class Direction
 */
 class Packet
 {
-protected:
+private:
     std::uint64_t m_timestamp{};
     Direction m_direction{};
     std::string m_rawBytes{};
@@ -28,6 +28,7 @@ public:
     Packet() = default;
     Packet(std::uint64_t timestamp, std::string direction, std::string rawBytes);
     void print() const;
+    friend class PacketDecoder;
 };
 
 #endif

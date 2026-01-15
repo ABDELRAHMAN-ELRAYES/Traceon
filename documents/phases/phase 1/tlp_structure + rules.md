@@ -174,7 +174,7 @@ Your analyzer should flag these.
    * `"SC"` (Success)
    * `"UR"` (Unsupported Request)
    * `"CA"` (Completer Abort)
-   * `"TO"` (Timeout)
+   * `"UNKNOWN"` (another state)
 
 * Only for **Cpl/CplD**
 * MRd/MWr status = null
