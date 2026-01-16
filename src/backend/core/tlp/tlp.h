@@ -1,6 +1,8 @@
 #ifndef TLP_H
 #define TLP_H
 
+#include "../../decoder/packet_decoder.h"
+
 #include <cstdint>
 #include <string>
 #include <optional>
@@ -32,6 +34,8 @@ struct Attr
     bool no_snoop;
     bool relaxed_ordering;
 };
+
+class PacketDecoder;
 /*
     - Express Transaction Protocol Level Packet (TLP)
 */
@@ -47,7 +51,7 @@ private:
 
     std::uint8_t m_tag;
     std::uint8_t m_tc;
-    std::optional<std::string> m_address{};
+    std::optional<std::uint64_t> m_address{};
     std::optional<std::uint64_t> m_length_dw{};
     std::optional<std::uint64_t> m_byte_count{};
     std::optional<CompletionStatus> m_status{};
@@ -57,8 +61,10 @@ private:
 
 public:
     TLP() = default;
-    TLP::TLP(TlpType type, Fmt fmt, Attr attr,
-             std::string requesterId, std::uint8_t tag, std::uint8_t tc);
+    TLP(TlpType type, Fmt fmt, Attr attr,
+        std::string requesterId, std::uint8_t tag, std::uint8_t tc);
+
+    friend class PacketDecoder;
 };
 
 #endif

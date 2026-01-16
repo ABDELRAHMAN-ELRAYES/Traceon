@@ -1,4 +1,6 @@
-#include "backend/core/packet/Packet.h"
+#include "backend/core/packet/packet.h"
+#include "backend/decoder/packet_decoder.h"
+
 #include <fstream>
 #include <sstream>
 #include <vector>
@@ -50,11 +52,14 @@ int main()
             continue;
     }
 
+    /*
+        - 
+    */
     while (!packets.empty())
     {
         Packet packet{packets.front()};
         packets.pop();
-        packet.print();
+        PacketDecoder::decode(packet);
         std::cout << "=========================\n";
     }
 

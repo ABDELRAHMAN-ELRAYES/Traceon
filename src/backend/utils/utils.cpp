@@ -3,9 +3,7 @@
 
 namespace Utils
 {
-    /*
-        - Convert the packet Direction from string (file read type) to its enum type
-    */
+
     Direction stringToDirection(std::string &strDirection)
     {
         std::string strDirectionCopy = strDirection;
@@ -31,5 +29,10 @@ namespace Utils
             return "RX";
         }
         return "UNKOWN";
+    }
+
+    constexpr std::uint32_t extractBits(std::uint32_t value, int start, int end)
+    {
+        return (value >> start) & ((1u << (end - start + 1)) - 1);
     }
 }

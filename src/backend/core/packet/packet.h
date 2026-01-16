@@ -14,6 +14,8 @@ enum class Direction
     UNKNOWN // unvalid direction
 };
 
+class PacketDecoder;
+
 /*
     - Express the Raw Packet From Trace Logs
 */

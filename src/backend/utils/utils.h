@@ -1,5 +1,6 @@
 #include "../core/packet/packet.h"
 #include <string>
+#include <cstdint>
 
 namespace Utils
 {
@@ -14,5 +15,10 @@ namespace Utils
         - Use Case: Print the Packet Info
     */
     std::string directionToString(Direction direction);
+
+    /*
+        - Extract a specific range of bits from a value
+    */
+    constexpr std::uint32_t extractBits(std::uint32_t value, int start, int end);
 
 }
