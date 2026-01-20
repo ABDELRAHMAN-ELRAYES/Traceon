@@ -8,9 +8,42 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <unordered_map>
 #include <iostream>
 
-constexpr int DW_HEXA_DIGITS_NUMBER = 8;
+// the numer of hexadecimal digits each double word will be in
+constexpr std::uint8_t DW_HEXA_DIGITS_NUMBER = 8;
+
+// fmt potential values
+constexpr std::uint8_t FMT_3DW_WITHOUT_DATA = 0;
+constexpr std::uint8_t FMT_3DW_WITH_DATA = 2;
+constexpr std::uint8_t FMT_4DW_WITHOUT_DATA = 1;
+constexpr std::uint8_t FMT_4DW_WITH_DATA = 3;
+// Map Potential Value to its format
+const std::unordered_map<std::uint8_t, TranslatedFmt> fmtMap = {
+    {FMT_3DW_WITHOUT_DATA, {false, Fmt::DW3}},
+    {FMT_3DW_WITH_DATA, {true, Fmt::DW3}},
+    {FMT_4DW_WITHOUT_DATA, {false, Fmt::DW4}},
+    {FMT_4DW_WITH_DATA, {true, Fmt::DW4}}};
+
+// Type potential values
+constexpr std::uint8_t MEMORY_READ = 0;
+constexpr std::uint8_t MEMORY_WRITE = 1;
+constexpr std::uint8_t COMPLETION_WITH_DATA = 11;
+constexpr std::uint8_t COMPLETION_WITHOUT_DATA = 10;
+
+// Map Potential Value to its format
+const std::unordered_map<std::uint8_t, TlpType> typeMap = {
+    {MEMORY_READ, TlpType::MRd},
+    {MEMORY_WRITE, TlpType::MWr},
+    {COMPLETION_WITH_DATA, TlpType::CplD},
+    {COMPLETION_WITHOUT_DATA, TlpType::Cpl}};
+
+struct TranslatedFmt
+{
+    bool hasData{};
+    Fmt type{};
+};
 
 class TLP;
 
@@ -22,6 +55,16 @@ private:
         - Parse Double Words(DWs) from the hexadecimal raw bytes packet string
     */
     static std::vector<std::uint32_t> parsePacketDws(const std::string &rawBytes);
+
+    /*
+        - Translate the raw fmt to readable format from 001 -> 4DW with data
+    */
+    static TranslatedFmt translateFmtHeader(std::uint8_t rawFmt);
+
+    /*
+        - Translate the raw Type to readable format from 00000 -> MRd
+    */
+    static TlpType translatePacketType(std::uint8_t rawType);
 
 public:
     /*

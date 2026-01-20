@@ -8,15 +8,15 @@ TLP::TLP(TlpType type, Fmt fmt, Attr attr,
     : m_type(type),
       m_fmt(fmt),
       m_attr(attr),
-      m_requester_id(std::move(requesterId)),
-      m_completer_id(std::nullopt),
+      m_requesterId(std::move(requesterId)),
+      m_completerId(std::nullopt),
       m_tag(tag),
       m_tc(tc),
       m_address(std::nullopt),
-      m_length_dw(std::nullopt),
-      m_byte_count(std::nullopt),
+      m_lengthDw(std::nullopt),
+      m_byteCount(std::nullopt),
       m_status(std::nullopt),
-      m_is_malformed(false),
-      m_decode_errors()
+      m_isMalformed(false),
+      m_decodeErrors()
 {
 }

@@ -31,8 +31,8 @@ enum class CompletionStatus
 };
 struct Attr
 {
-    bool no_snoop;
-    bool relaxed_ordering;
+    bool noSnoop;
+    bool relaxedOrdering;
 };
 
 class PacketDecoder;
@@ -46,18 +46,18 @@ private:
     Fmt m_fmt;
     Attr m_attr;
 
-    std::string m_requester_id;
-    std::optional<std::string> m_completer_id;
+    std::string m_requesterId;
+    std::optional<std::string> m_completerId;
 
     std::uint8_t m_tag;
     std::uint8_t m_tc;
     std::optional<std::uint64_t> m_address{};
-    std::optional<std::uint64_t> m_length_dw{};
-    std::optional<std::uint64_t> m_byte_count{};
+    std::optional<std::uint64_t> m_lengthDw{};
+    std::optional<std::uint64_t> m_byteCount{};
     std::optional<CompletionStatus> m_status{};
 
-    bool m_is_malformed{};
-    std::vector<std::string> m_decode_errors{};
+    bool m_isMalformed{};
+    std::vector<std::string> m_decodeErrors{};
 
 public:
     TLP() = default;
