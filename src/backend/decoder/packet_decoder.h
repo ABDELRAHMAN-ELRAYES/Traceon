@@ -39,6 +39,19 @@ const std::unordered_map<std::uint8_t, TlpType> typeMap = {
     {COMPLETION_WITH_DATA, TlpType::CplD},
     {COMPLETION_WITHOUT_DATA, TlpType::Cpl}};
 
+// The maximum possible value for TC
+constexpr std::uint8_t MAXIMUM_TC = 7;
+
+// Potential Values for the status of completion packets(CplD / Cpl)
+constexpr std::uint8_t SUCCESS_COMPLETION = 0;
+constexpr std::uint8_t UNSUPPORTED_COMPLETION = 1;
+constexpr std::uint8_t ABORT_COMPLETION = 4;
+
+// Map Potential Value to its format
+const std::unordered_map<std::uint8_t, CompletionStatus> completionStatusMap = {
+    {SUCCESS_COMPLETION, CompletionStatus::SC},
+    {UNSUPPORTED_COMPLETION, CompletionStatus::UR},
+    {ABORT_COMPLETION, CompletionStatus::CA}};
 struct TranslatedFmt
 {
     bool hasData{};
@@ -65,6 +78,11 @@ private:
         - Translate the raw Type to readable format from 00000 -> MRd
     */
     static TlpType translatePacketType(std::uint8_t rawType);
+
+    /*
+       - Translate the raw Status to readable format from 000 -> SC (success)
+   */
+    static CompletionStatus translatePacketCompletionStatus(std::uint8_t rawStatus);
 
 public:
     /*

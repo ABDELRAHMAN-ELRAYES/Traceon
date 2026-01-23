@@ -123,16 +123,17 @@ Payload length in **DWORDs**.
 Rules:
 
 * For no-data packets: must be **0**
+  * like : CplD / Cpl
 * For data packets: must be ≥ 1
-
+  * like MRd / MWr
+  
 Special case:
 
 * Length=0 means **1024 DW** (PCIe spec quirk)
 
 Malformed if:
 
-* MRd has nonzero length
-* MWr has zero length
+* MWr / MRd has zero length
 
 ---
 
