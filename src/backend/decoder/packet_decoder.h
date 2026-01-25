@@ -9,6 +9,7 @@
 #include <string>
 #include <cstdint>
 #include <unordered_map>
+#include <sstream>
 #include <iostream>
 
 // the numer of hexadecimal digits each double word will be in
@@ -83,6 +84,11 @@ private:
        - Translate the raw Status to readable format from 000 -> SC (success)
    */
     static CompletionStatus translatePacketCompletionStatus(std::uint8_t rawStatus);
+
+    /*
+        - Translate Raw Id (requester / Completer) into readable BDF format [Bus]:[Device]:[Function]
+    */
+    static std::string translateBdfId(std::uint16_t rawId);
 
 public:
     /*

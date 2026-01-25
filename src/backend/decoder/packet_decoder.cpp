@@ -48,6 +48,36 @@ CompletionStatus translatePacketCompletionStatus(std::uint8_t rawStatus)
     }
     return CompletionStatus::UNKNOWN;
 }
+std::string translateBdfId(std::uint16_t rawId)
+{
+    // Extract the bus, device, function ->> (8, 5, 3) bits
+    std::uint8_t bus = (rawId >> 8) & 0xFF;
+    std::uint8_t device = (rawId >> 3) & 0x1F;
+    std::uint8_t function = rawId & 0x07;
+
+    // Store the Translated ID
+    std::stringstream id{};
+
+    // Set the number base for the input numbers to Hexadecimal (view F instead of 16)
+    id << std::hex;
+    id.width(2);
+    id.fill('0');
+
+    id << bus;
+    id << ':';
+
+    id.width(2);
+    id.fill('0');
+
+    id << device;
+    id << '.';
+
+    id.width(1);
+
+    id << function;
+
+    return id.str();
+}
 
 TLP PacketDecoder::decode(const Packet &packet)
 {
@@ -97,7 +127,6 @@ TLP PacketDecoder::decode(const Packet &packet)
     {
         tlp.m_isMalformed = true;
         tlp.m_decodeErrors.push_back("Fmt Header Type is not supported, UNKNOWN fmt header.");
-        return tlp;
     }
     tlp.m_fmt = translatedFmt.type;
 
@@ -110,7 +139,6 @@ TLP PacketDecoder::decode(const Packet &packet)
     {
         tlp.m_isMalformed = true;
         tlp.m_decodeErrors.push_back("Tlp Type is not supported, UNKNOWN packet type.");
-        return tlp;
     }
     tlp.m_type = translatedTlpType;
 
@@ -120,7 +148,6 @@ TLP PacketDecoder::decode(const Packet &packet)
     {
         tlp.m_isMalformed = true;
         tlp.m_decodeErrors.push_back("Unsupported value for Tc, Out of Possible Range.");
-        return tlp;
     }
     tlp.m_tc = tc;
 
@@ -142,7 +169,6 @@ TLP PacketDecoder::decode(const Packet &packet)
         {
             tlp.m_isMalformed = true;
             tlp.m_decodeErrors.push_back("Malformed Packet with a data type but has a ZERO Double word length");
-            return tlp;
         }
         else
         {
@@ -155,19 +181,21 @@ TLP PacketDecoder::decode(const Packet &packet)
         {
             tlp.m_isMalformed = true;
             tlp.m_decodeErrors.push_back("Malformed Packet with a non-data type but has a NON-ZERO Double word length");
-            return tlp;
         }
     }
 
     // Declare the requesterId and Tag -> Extract their values based on the packet type
-    std::uint16_t requesterId{};
+    std::uint16_t rawRequesterId{};
     std::uint8_t tag{};
     std::uint64_t address{};
-    
+    std::string requesterId{};
+
     if (tlp.m_type == TlpType::MRd || tlp.m_type == TlpType::MWr)
     {
-        // TODO : This Requester Id must be formated [Bus]:[Device]:[Function]
-        requesterId = Utils::extractBits(dw1, 16, 31);
+        // Translate Requester Id into BDF string format [Bus]:[Device]:[Function]
+        rawRequesterId = Utils::extractBits(dw1, 16, 31);
+        requesterId = PacketDecoder::translateBdfId(rawRequesterId);
+
         tag = Utils::extractBits(dw1, 8, 15);
 
         if (tlp.m_fmt == Fmt::DW3)
@@ -181,7 +209,6 @@ TLP PacketDecoder::decode(const Packet &packet)
             {
                 tlp.m_isMalformed = true;
                 tlp.m_decodeErrors.push_back("Malformed Packet of 4Dw header fmt but it has less than 4 DW.");
-                return tlp;
             }
 
             // Neglect the last two  bits from the lowes DW and then concat the two DWs to form the address in 4DW header fmt types
@@ -199,8 +226,11 @@ TLP PacketDecoder::decode(const Packet &packet)
         requesterId = Utils::extractBits(dw2, 16, 31);
         tag = Utils::extractBits(dw2, 8, 15);
 
-        // TODO : This Completer Id must be formated [Bus]:[Device]:[Function]
-        std::uint16_t completerId = Utils::extractBits(dw1, 16, 31);
+        // Translate Completer Id into BDF string format [Bus]:[Device]:[Function]
+        std::uint16_t rawCompleterId = Utils::extractBits(dw1, 16, 31);
+        std::string completerId = PacketDecoder::translateBdfId(rawCompleterId);
+
+        tlp.m_completerId = completerId;
 
         // Extract and Translate the raw completion status into readable format
         std::uint8_t status = Utils::extractBits(dw1, 13, 15);
@@ -209,7 +239,6 @@ TLP PacketDecoder::decode(const Packet &packet)
         {
             tlp.m_isMalformed = true;
             tlp.m_decodeErrors.push_back("Malformed Packet with UNKNOWN Completion Status.");
-            return tlp;
         }
         tlp.m_status = translatedCompletionStatus;
 
@@ -218,17 +247,8 @@ TLP PacketDecoder::decode(const Packet &packet)
         tlp.m_byteCount = byteCount;
     }
 
-    // TODO: Assign the requesterId after conversion to its string format
+    tlp.m_requesterId = requesterId;
     tlp.m_tag = tag;
-
-    std::cout << "Timestamp: " << timestamp << "\n"
-              << "Direction: " << Utils::directionToString(direction) << "\n"
-              << "Raw Hexadecimal: ";
-    for (const std::uint32_t &val : dws)
-    {
-        std::cout << std::hex << val << " ";
-    }
-    std::cout << std::dec << "\n";
 
     return tlp;
 }
