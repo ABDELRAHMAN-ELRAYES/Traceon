@@ -1,5 +1,5 @@
 #include "packet.h"
-#include "../../utils/utils.h"
+#include "utils/utils.h"
 
 /*
     - Construct a Packet

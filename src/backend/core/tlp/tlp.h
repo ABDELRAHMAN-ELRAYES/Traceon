@@ -1,7 +1,6 @@
 #ifndef TLP_H
 #define TLP_H
 
-#include "../../decoder/packet_decoder.h"
 
 #include <cstdint>
 #include <string>
@@ -63,7 +62,8 @@ public:
     TLP() = default;
     TLP(TlpType type, Fmt fmt, Attr attr,
         std::string requesterId, std::uint8_t tag, std::uint8_t tc);
-
+        
+    void printPacketDetails();
     friend class PacketDecoder;
 };
 

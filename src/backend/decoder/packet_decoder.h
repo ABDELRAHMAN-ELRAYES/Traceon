@@ -1,9 +1,7 @@
 #ifndef PACKET_DECODER_H
 #define PACKET_DECODER_H
 
-#include "../core/packet/packet.h"
-#include "../core/tlp/tlp.h"
-#include "../utils/utils.h"
+#include "core/tlp/tlp.h"
 
 #include <vector>
 #include <string>
@@ -11,6 +9,14 @@
 #include <unordered_map>
 #include <sstream>
 #include <iostream>
+
+class Packet;
+
+struct TranslatedFmt
+{
+    bool hasData{};
+    Fmt type{};
+};
 
 // the numer of hexadecimal digits each double word will be in
 constexpr std::uint8_t DW_HEXA_DIGITS_NUMBER = 8;
@@ -53,11 +59,7 @@ const std::unordered_map<std::uint8_t, CompletionStatus> completionStatusMap = {
     {SUCCESS_COMPLETION, CompletionStatus::SC},
     {UNSUPPORTED_COMPLETION, CompletionStatus::UR},
     {ABORT_COMPLETION, CompletionStatus::CA}};
-struct TranslatedFmt
-{
-    bool hasData{};
-    Fmt type{};
-};
+
 
 class TLP;
 

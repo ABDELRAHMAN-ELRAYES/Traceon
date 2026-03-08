@@ -1,45 +1,117 @@
-1000,TX,0000000403000F0000001000
-1010,TX,4A000004001000100000001011223344
-1020,TX,0000000803001F0000002000
-1030,TX,4A00000800110020000000201122334455667788
-1040,TX,0000000403002F0000003000
-1050,TX,4A000004001200100000003011223344
-1060,TX,0000000803003F0000004000
-1070,TX,4A00000800130020000000401122334455667788
-1080,TX,0000000403004F0000005000
-1090,TX,4A000004001400100000005011223344
-1100,TX,0000000403010F0000006000
-1110,TX,0000000803011F0000007000
-1120,TX,0000000403012F0000008000
-1130,TX,0000000803013F0000009000
-1140,TX,0000000403014F000000A000
-1150,TX,4A000004001F00100000001011223344
-1160,TX,4A000008001F0020000000201122334455667788
-1170,TX,4A000004001F00300000003011223344
-1180,TX,4A000008001F0040000000401122334455667788
-1190,TX,4A000004001F00500000005011223344
-1200,TX,0000000403020F000000B000
-1210,TX,0000000403020F000000C000
-1220,TX,4A00000400200010000000B011223344
-1230,TX,4A00000400200010000000C011223344
-1240,TX,0000000403020F000000D000
-1250,TX,0000000803030F000000E000
-1260,TX,4A00000400300010000000E011223344
-1270,TX,0000000403031F000000F000
-1280,TX,4A00000800310020000000F01122334455667788
-1290,TX,4A00000400320010000000F011223344
-1300,TX,0000000403040F0000001003
-1310,TX,0000000803041F0000002002
-1320,TX,0000000403042F0000003001
-1330,TX,0000000803043F0000004006
-1340,TX,0000000403044F0000005007
-1350,TX,0000000403F00F0000006000
-1360,TX,0000000803F11F0000007000
-1370,TX,0000000403F22F0000008000
-1380,TX,0000000803F33F0000009000
-1390,TX,0000000403F44F000000A000
-1400,TX,4000000403050F000000B000DEADBEEF
-1410,TX,4000000803051F000000C000CAFEBABECAFEBABE
-1420,TX,4000000403052F000000D000AABBCCDD
-1430,TX,4000000803053F000000E0001122334455667788
-1440,TX,4000000403054F000000F00012345678
+timestamp,direction,raw_bytes
+
+# =============================================================================
+# SECTION 1 — VALID PACKETS (expected: is_malformed=false, no decode errors)
+# =============================================================================
+
+# Test 1 — Valid MRd 3DW | TC=0 Attr=00 Length=0 | RequesterID=0000:05:01.0 Tag=10 Addr=0x30000000
+1000,TX,0000000005080AFF30000000
+
+# Test 2 — Valid MWr 3DW | TC=0 Attr=00 Length=1 | RequesterID=0000:05:01.0 Tag=10 Addr=0x30000000
+2500,TX,4000000105080A0F30000000
+
+# Test 3 — Valid CplD 3DW SC | Length=1 ByteCount=4 | CompleterID=0000:02:00.0 RequesterID=0000:05:01.0 Tag=10
+3100,RX,4A0000010200000405080A00
+
+# Test 4 — Valid Cpl 3DW SC (write completion, no data) | CompleterID=0000:02:00.0 RequesterID=0000:05:01.0 Tag=11
+4000,RX,0A0000000200000405080B00
+
+# Test 5 — Valid MRd 4DW | TC=0 Attr=00 Length=0 | RequesterID=0000:01:00.2 Tag=1 Addr=0x0000000100010000
+5000,TX,20000000010201FF0000000100010000
+
+# Test 6 — Valid MWr 4DW | TC=2 Attr=00 Length=4 | RequesterID=0000:03:00.0 Tag=5 Addr=0x0000000200080000
+6000,TX,60200004030005FF0000000200080000
+
+# Test 7 — Valid MRd NoSnoop (Attr bit13=1) | RequesterID=0000:05:01.0 Tag=3 Addr=0x40000000
+7000,TX,00002000050803FF40000000
+
+# Test 8 — Valid MWr RelaxedOrdering (Attr bit12=1) Length=2 | RequesterID=0000:01:00.2 Tag=7 Addr=0x50000000
+8000,TX,40001002010207FF50000000
+
+# Test 9 — Valid CplD UR status (Status=001) | CompleterID=0000:02:00.0 ByteCount=4 RequesterID=0000:05:01.0 Tag=10
+9000,RX,4A0000010200200405080A00
+
+# Test 10 — Valid CplD CA status (Status=100) | CompleterID=0000:04:00.0 ByteCount=4 RequesterID=0000:05:01.0 Tag=12
+10000,RX,4A0000010400800405080C00
+
+# =============================================================================
+# SECTION 2 — MALFORMED PACKETS (expected: is_malformed=true, decode_errors populated)
+# =============================================================================
+
+# Test 11 — Too short: only 2 DWs (16 hex digits), minimum is 3 DWs (24 digits)
+11000,TX,4000000105080AFF
+
+# Test 12 — Truncated: 23 hex digits (not a multiple of 8)
+12000,TX,4000000105080AFF3000000
+
+# Test 13 — Illegal Fmt=100 (binary) = 4, only 000-011 are valid
+#            Expected error: "Illegal Fmt value (4)"
+13000,TX,8000000005080AFF30000000
+
+# Test 14 — Unknown TLP Type=0x1F (31), not in type map
+#            Expected error: "Unsupported TLP Type value (31)"
+14000,TX,5F00000105080AFF30000000
+
+# Test 15 — Fmt/Type mismatch: MRd (no-data type) paired with Fmt=010 (data)
+#            Expected error: "Fmt/Type mismatch: no-data type requires no-data fmt"
+15000,TX,4000000005080AFF30000000
+
+# Test 16 — Fmt/Type mismatch: MWr (data type) paired with Fmt=000 (no-data)
+#            Expected error: "Fmt/Type mismatch: data type requires data fmt"
+16000,TX,0000000405080AFF30000000
+
+# Test 17 — MWr with ZERO length field (data type must have length > 0)
+#            Expected error: "data-carrying TLP type has a ZERO DW length"
+17000,TX,4000000005080AFF30000000
+
+# Test 18 — MRd with NON-ZERO length=4 (no-data type must have length = 0)
+#            Expected error: "no-data TLP type has a NON-ZERO DW length"
+18000,TX,0000000405080AFF30000000
+
+# Test 19 — CplD with reserved/illegal status=111 (binary) = 7
+#            Expected error: "Illegal completion status value (7)"
+19000,RX,4A0000010200E00405080A00
+
+# Test 20 — 4DW MRd with only 3 DWs present (DW3 is missing)
+#            Expected error: "expected at least 4 DWs but found fewer"
+20000,TX,20000000010201FF00000001
+
+# =============================================================================
+# SECTION 3 — TRANSACTION MATCHING PAIRS (for Validator layer)
+# All packets here decode cleanly; errors are protocol-level, not structural.
+# =============================================================================
+
+# Pair A: MRd then CplD — VALID MATCH ----------------------------------------
+# MRd: RequesterID=0000:01:00.0  Tag=0x01  Addr=0x80000000
+30000,TX,00000000010001FF80000000
+# CplD: CompleterID=0000:02:00.0  Status=SC  ByteCount=16  Tag=0x01
+30500,RX,4A0000040200001001000100
+
+# Pair B: MWr then Cpl — VALID MATCH -----------------------------------------
+# MWr: RequesterID=0000:01:00.0  Tag=0x02  Length=2  Addr=0xC0000000
+31000,TX,40000002010002FFC0000000
+# Cpl: CompleterID=0000:02:00.0  Status=SC  ByteCount=8  Tag=0x02
+31800,RX,0A0000000200000801000200
+
+# Pair C: MRd with NO matching completion — validator must flag ----------------
+# MRd: RequesterID=0000:03:00.0  Tag=0x05  Addr=0xB0000000
+# No CplD follows — validator error: "MRd tag=0x05 never completed"
+32000,TX,00000000030005FFB0000000
+
+# Pair D: Duplicate tag — two MRds reuse tag=0x09 before completion -----------
+# First MRd: RequesterID=0000:04:00.0  Tag=0x09  Addr=0xA0000000
+33000,TX,00000000040009FFA0000000
+# Second MRd same requester, same Tag=0x09 — validator error: "duplicate tag collision"
+33200,TX,00000000040009FF90000000
+# Late CplD for tag=0x09
+33900,RX,4A0000010200000404000900
+
+# Pair E: CplD with unmatched tag=0xFF — no prior MRd exists ------------------
+# Validator error: "completion received for unknown tag=0xFF"
+34000,RX,4A000001020000040508FF00
+
+# Pair F: CplD byte_count mismatch --------------------------------------------
+# MRd: RequesterID=0000:06:00.0  Tag=0x10  Addr=0x70000000
+35000,TX,00000000060010FF70000000
+# CplD: ByteCount=4 only — but MRd was for more — validator error: "byte_count mismatch"
+35500,RX,4A0000010200000406001000

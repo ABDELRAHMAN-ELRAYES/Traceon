@@ -53,13 +53,14 @@ int main()
     }
 
     /*
-        - 
+        -
     */
     while (!packets.empty())
     {
         Packet packet{packets.front()};
         packets.pop();
-        PacketDecoder::decode(packet);
+        TLP tlp = PacketDecoder::decode(packet);
+        tlp.printPacketDetails();
         std::cout << "=========================\n";
     }
 

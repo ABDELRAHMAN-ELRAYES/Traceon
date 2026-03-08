@@ -1,5 +1,6 @@
 #ifndef PACKET_H
 #define PACKET_H
+
 #include <cstdint>
 #include <string>
 #include <iostream>

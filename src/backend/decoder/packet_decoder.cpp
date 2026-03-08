@@ -1,4 +1,6 @@
 #include "packet_decoder.h"
+#include "core/packet/packet.h"
+#include "utils/utils.h"
 
 std::vector<std::uint32_t> PacketDecoder::parsePacketDws(const std::string &hexaRawBytes)
 {
@@ -30,7 +32,7 @@ TranslatedFmt PacketDecoder::translateFmtHeader(std::uint8_t rawFmt)
     return translatedFmt;
 }
 
-TlpType translatePacketType(std::uint8_t rawType)
+TlpType PacketDecoder::translatePacketType(std::uint8_t rawType)
 {
     auto iterator = typeMap.find(rawType);
     if (iterator != typeMap.end())
@@ -39,7 +41,7 @@ TlpType translatePacketType(std::uint8_t rawType)
     }
     return TlpType::UNKNOWN;
 }
-CompletionStatus translatePacketCompletionStatus(std::uint8_t rawStatus)
+CompletionStatus PacketDecoder::translatePacketCompletionStatus(std::uint8_t rawStatus)
 {
     auto iterator = completionStatusMap.find(rawStatus);
     if (iterator != completionStatusMap.end())
@@ -48,7 +50,7 @@ CompletionStatus translatePacketCompletionStatus(std::uint8_t rawStatus)
     }
     return CompletionStatus::UNKNOWN;
 }
-std::string translateBdfId(std::uint16_t rawId)
+std::string PacketDecoder::translateBdfId(std::uint16_t rawId)
 {
     // Extract the bus, device, function ->> (8, 5, 3) bits
     std::uint8_t bus = (rawId >> 8) & 0xFF;
@@ -115,6 +117,8 @@ TLP PacketDecoder::decode(const Packet &packet)
     std::uint32_t dw0 = dws[0];
     std::uint32_t dw1 = dws[1];
     std::uint32_t dw2 = dws[2];
+
+    std::cout << dw0 << " " << dw1 << " " << dw2 << "\n";
 
     // Mandatory Packet fields
 
@@ -223,7 +227,10 @@ TLP PacketDecoder::decode(const Packet &packet)
     }
     else
     {
-        requesterId = Utils::extractBits(dw2, 16, 31);
+        // Translate Requester Id into BDF string format [Bus]:[Device]:[Function]
+        rawRequesterId = Utils::extractBits(dw2, 16, 31);
+        requesterId = PacketDecoder::translateBdfId(rawRequesterId);
+
         tag = Utils::extractBits(dw2, 8, 15);
 
         // Translate Completer Id into BDF string format [Bus]:[Device]:[Function]
@@ -249,6 +256,8 @@ TLP PacketDecoder::decode(const Packet &packet)
 
     tlp.m_requesterId = requesterId;
     tlp.m_tag = tag;
+
+    std::cout << tag << "\n";
 
     return tlp;
 }
