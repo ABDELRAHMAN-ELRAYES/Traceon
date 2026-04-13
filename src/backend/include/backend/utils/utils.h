@@ -1,8 +1,8 @@
 #ifndef UTILS_NAMESPACE
 #define UTILS_NAMESPACE
 
-#include "packet/packet.h"
-#include "tlp/tlp.h"
+#include "backend/core/packet/packet.h"
+#include "backend/core/tlp/tlp.h"
 
 #include <string>
 #include <cstdint>

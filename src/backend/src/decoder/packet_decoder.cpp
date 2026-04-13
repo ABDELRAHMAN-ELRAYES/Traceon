@@ -1,6 +1,6 @@
-#include "packet_decoder.h"
-#include "core/packet/packet.h"
-#include "utils/utils.h"
+#include "backend/decoder/packet_decoder.h"
+#include "backend/core/packet/packet.h"
+#include "backend/utils/utils.h"
 
 std::vector<std::uint32_t> PacketDecoder::parsePacketDws(const std::string &hexaRawBytes)
 {
