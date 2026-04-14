@@ -32,6 +32,8 @@ int main()
     // Read the Row Packets line by line
     while (getline(fin, line))
     {
+
+        if(line.empty() || line[0] == '#') continue;
         std::stringstream s{line};
         std::vector<std::string> cols{};
 
@@ -40,6 +42,13 @@ int main()
         {
             cols.push_back(word);
         }
+
+        if (cols.size() != 3)
+            continue;
+
+        if (cols[0] == "timestamp")
+            continue;
+
         if (cols.size() == 3)
         {
             std::uint64_t timestamp{std::stoull(cols[0])};
