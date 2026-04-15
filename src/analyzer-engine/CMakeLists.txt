@@ -4,6 +4,8 @@ add_library(analyzer_engine_lib STATIC
     src/core/tlp/tlp.cpp
     src/decoder/packet_decoder.cpp
     src/utils/utils.cpp
+    src/input-layer/input_layer.cpp
+    src/input-layer/input_exception.cpp
 )
 
 # Tell the rest of the project where the analyzer engine public headers are

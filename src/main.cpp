@@ -1,64 +1,28 @@
 #include "analyzer-engine/core/packet/packet.h"
 #include "analyzer-engine/decoder/packet_decoder.h"
+#include "analyzer-engine/input-layer/input_layer.h"
 
-#include <fstream>
+#include <filesystem>
 #include <iostream>
+#include <optional>
 #include <queue>
-#include <sstream>
-#include <vector>
 
 const std::string TRACE_FILE_PATH = "../data/trace_data.csv";
 
 int main() {
 
-  // Open a file stream read connection
-  std::fstream fin;
-  fin.open(TRACE_FILE_PATH, std::ios::in);
+  std::filesystem::path path{TRACE_FILE_PATH};
+  TraceInputLayer inputLayer{path};
 
-  // Check if the file connection opened
-  if (!fin.is_open()) {
-    std::cout << "File is not exist\n";
-    return 1;
-  }
-
-  std::string line{}, word{};
-
-  // Recive the packets in order according to the arrival timestamp
-  // vector<string> -> Timestamp, Direction, TLP Hexadecimal header
   std::queue<Packet> packets{};
 
   // Read the Row Packets line by line
-  while (getline(fin, line)) {
-
-    if (line.empty() || line[0] == '#')
-      continue;
-    std::stringstream s{line};
-    std::vector<std::string> cols{};
-
-    // Read the packet columns by the seperated comma
-    while (getline(s, word, ',')) {
-      cols.push_back(word);
+  while (!inputLayer.isExhausted()) {
+    std::optional<Packet> packetopt = inputLayer.next();
+    if (packetopt.has_value()) {
+      packets.push(packetopt.value());
     }
-
-    if (cols.size() != 3)
-      continue;
-
-    if (cols[0] == "timestamp")
-      continue;
-
-    if (cols.size() == 3) {
-      std::uint64_t timestamp{std::stoull(cols[0])};
-      std::string direction{cols[1]};
-      std::string rawBytes{cols[2]};
-      Packet packet{timestamp, direction, rawBytes};
-      packets.push(packet);
-    } else
-      continue;
   }
-
-  /*
-      -
-  */
   while (!packets.empty()) {
     Packet packet{packets.front()};
     packets.pop();
