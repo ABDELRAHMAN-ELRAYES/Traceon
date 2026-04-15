@@ -1,21 +1,18 @@
 #ifndef PACKET_DECODER_H
 #define PACKET_DECODER_H
 
-#include "backend/core/tlp/tlp.h"
+#include "analyzer-engine/core/tlp/tlp.h"
 
-#include <vector>
-#include <string>
 #include <cstdint>
+#include <string>
 #include <unordered_map>
-#include <sstream>
-#include <iostream>
+#include <vector>
 
 class Packet;
 
-struct TranslatedFmt
-{
-    bool hasData{};
-    Fmt type{};
+struct TranslatedFmt {
+  bool hasData{};
+  Fmt type{};
 };
 
 // the numer of hexadecimal digits each double word will be in
@@ -60,43 +57,43 @@ const std::unordered_map<std::uint8_t, CompletionStatus> completionStatusMap = {
     {UNSUPPORTED_COMPLETION, CompletionStatus::UR},
     {ABORT_COMPLETION, CompletionStatus::CA}};
 
-
 class TLP;
 
-class PacketDecoder
-{
+class PacketDecoder {
 
 private:
-    /*
-        - Parse Double Words(DWs) from the hexadecimal raw bytes packet string
-    */
-    static std::vector<std::uint32_t> parsePacketDws(const std::string &rawBytes);
+  /*
+      - Parse Double Words(DWs) from the hexadecimal raw bytes packet string
+  */
+  static std::vector<std::uint32_t> parsePacketDws(const std::string &rawBytes);
 
-    /*
-        - Translate the raw fmt to readable format from 001 -> 4DW with data
-    */
-    static TranslatedFmt translateFmtHeader(std::uint8_t rawFmt);
+  /*
+      - Translate the raw fmt to readable format from 001 -> 4DW with data
+  */
+  static TranslatedFmt translateFmtHeader(std::uint8_t rawFmt);
 
-    /*
-        - Translate the raw Type to readable format from 00000 -> MRd
-    */
-    static TlpType translatePacketType(std::uint8_t rawType);
+  /*
+      - Translate the raw Type to readable format from 00000 -> MRd
+  */
+  static TlpType translatePacketType(std::uint8_t rawType);
 
-    /*
-       - Translate the raw Status to readable format from 000 -> SC (success)
-   */
-    static CompletionStatus translatePacketCompletionStatus(std::uint8_t rawStatus);
+  /*
+     - Translate the raw Status to readable format from 000 -> SC (success)
+ */
+  static CompletionStatus
+  translatePacketCompletionStatus(std::uint8_t rawStatus);
 
-    /*
-        - Translate Raw Id (requester / Completer) into readable BDF format [Bus]:[Device]:[Function]
-    */
-    static std::string translateBdfId(std::uint16_t rawId);
+  /*
+      - Translate Raw Id (requester / Completer) into readable BDF format
+     [Bus]:[Device]:[Function]
+  */
+  static std::string translateBdfId(std::uint16_t rawId);
 
 public:
-    /*
-        - Decode the Packet Raw Hexadecimal into Protocol level packet like (TLP)
-    */
-    static TLP decode(const Packet &packet);
+  /*
+      - Decode the Packet Raw Hexadecimal into Protocol level packet like (TLP)
+  */
+  static TLP decode(const Packet &packet);
 };
 
 #endif
