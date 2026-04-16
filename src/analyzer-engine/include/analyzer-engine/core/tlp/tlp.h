@@ -1,6 +1,7 @@
 #ifndef TLP_H
 #define TLP_H
 
+#include "analyzer-engine/decoder/decode_error.h"
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -35,7 +36,7 @@ private:
   std::optional<CompletionStatus> m_status{};
 
   bool m_isMalformed{};
-  std::vector<std::string> m_decodeErrors{};
+  std::vector<DecodeError> m_decodeErrors{};
 
 public:
   TLP() = default;

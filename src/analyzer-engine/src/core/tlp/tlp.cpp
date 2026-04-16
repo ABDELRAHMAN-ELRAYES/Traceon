@@ -74,7 +74,8 @@ void TLP::printPacketDetails() {
   if (!m_decodeErrors.empty()) {
     cout << "Decode Errors   :" << endl;
     for (const auto &err : m_decodeErrors) {
-      cout << "  - " << err << endl;
+      cout << "  - [" << err.rule_id << "] Field: " << err.field << " - "
+           << err.description << endl;
     }
   }
 

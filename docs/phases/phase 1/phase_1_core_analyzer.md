@@ -362,17 +362,7 @@ Fields that are structurally inapplicable to a given TLP type — such as `addre
 
 The following decode error rules are evaluated by the `PacketDecoder` during the processing of each RawPacket. A rule triggers whenever the designated structural invariant is violated. Multiple rules may trigger for the same packet.
 
-| Rule ID | Field | Triggering Condition |
-|---|---|---|
-| DEC-001 | `Fmt [31:29]` | The Fmt field value is one of the reserved combinations (`0b110` or `0b111`) that are not defined by the PCIe Base Specification. |
-| DEC-002 | `Type [28:24]` | The Type field value, in combination with the Fmt field, does not correspond to any TLP type supported by the Phase 1 engine. |
-| DEC-003 | `TC [22:20]` | The Traffic Class field contains a value outside the valid range of 0 through 7. |
-| DEC-004 | `Length [9:0]` | The Length field is zero, which is reserved and illegal in all TLP types that carry a length field. |
-| DEC-005 | Payload bytes | The total number of bytes in `payload_hex` is insufficient to contain the minimum header size implied by the Fmt field. For 3DW headers, fewer than 12 bytes; for 4DW headers, fewer than 16 bytes. |
-| DEC-006 | `Address [31:2]` (3DW) | The 32-bit address field in a 3DW Memory TLP is not aligned to a Double Word boundary — that is, the two least-significant address bits are not both zero. |
-| DEC-007 | `Address [63:2]` (4DW) | The 64-bit address field in a 4DW Memory TLP is not aligned to a Double Word boundary. |
-| DEC-008 | `Status [15:13]` | The Completion Status field in a Cpl or CplD TLP contains a value that is not one of the three defined codes: SC (`000`), UR (`001`), or CA (`100`). |
-| DEC-009 | `payload_hex` | The `payload_hex` string contains characters that are not valid hexadecimal digits, making numeric interpretation impossible. |
+For the complete registry of Phase 1 structural decode rules, including Rule IDs, triggering conditions, and field mappings, refer to the [Structural Decode Error Registry](decoding_error_rules.md).
 
 ### 9.2 Error Classification Policy
 
