@@ -16,7 +16,7 @@ struct TranslatedFmt {
 };
 
 // the numer of hexadecimal digits each double word will be in
-constexpr std::uint8_t DW_HEXA_DIGITS_NUMBER = 8;
+constexpr std::size_t DW_HEXA_DIGITS_NUMBER = 8u;
 
 // fmt potential values
 constexpr std::uint8_t FMT_3DW_WITHOUT_DATA = 0;
@@ -24,24 +24,19 @@ constexpr std::uint8_t FMT_3DW_WITH_DATA = 2;
 constexpr std::uint8_t FMT_4DW_WITHOUT_DATA = 1;
 constexpr std::uint8_t FMT_4DW_WITH_DATA = 3;
 // Map Potential Value to its format
-const std::unordered_map<std::uint8_t, TranslatedFmt> fmtMap = {
+inline const std::unordered_map<std::uint8_t, TranslatedFmt> fmtMap = {
     {FMT_3DW_WITHOUT_DATA, {false, Fmt::DW3}},
     {FMT_3DW_WITH_DATA, {true, Fmt::DW3}},
     {FMT_4DW_WITHOUT_DATA, {false, Fmt::DW4}},
     {FMT_4DW_WITH_DATA, {true, Fmt::DW4}}};
 
 // Type potential values
-constexpr std::uint8_t MEMORY_READ = 0;
-constexpr std::uint8_t MEMORY_WRITE = 1;
-constexpr std::uint8_t COMPLETION_WITH_DATA = 11;
-constexpr std::uint8_t COMPLETION_WITHOUT_DATA = 10;
+constexpr std::uint8_t MEMORY_TYPE = 0b00000;
+constexpr std::uint8_t COMPLETION_TYPE = 0b01010;
 
 // Map Potential Value to its format
-const std::unordered_map<std::uint8_t, TlpType> typeMap = {
-    {MEMORY_READ, TlpType::MRd},
-    {MEMORY_WRITE, TlpType::MWr},
-    {COMPLETION_WITH_DATA, TlpType::CplD},
-    {COMPLETION_WITHOUT_DATA, TlpType::Cpl}};
+inline const std::unordered_map<std::uint8_t, TlpType> typeMap = {
+    {MEMORY_TYPE, TlpType::MRd}, {COMPLETION_TYPE, TlpType::Cpl}};
 
 // The maximum possible value for TC
 constexpr std::uint8_t MAXIMUM_TC = 7;
@@ -52,10 +47,10 @@ constexpr std::uint8_t UNSUPPORTED_COMPLETION = 1;
 constexpr std::uint8_t ABORT_COMPLETION = 4;
 
 // Map Potential Value to its format
-const std::unordered_map<std::uint8_t, CompletionStatus> completionStatusMap = {
-    {SUCCESS_COMPLETION, CompletionStatus::SC},
-    {UNSUPPORTED_COMPLETION, CompletionStatus::UR},
-    {ABORT_COMPLETION, CompletionStatus::CA}};
+inline const std::unordered_map<std::uint8_t, CompletionStatus>
+    completionStatusMap = {{SUCCESS_COMPLETION, CompletionStatus::SC},
+                           {UNSUPPORTED_COMPLETION, CompletionStatus::UR},
+                           {ABORT_COMPLETION, CompletionStatus::CA}};
 
 class TLP;
 
@@ -76,6 +71,12 @@ private:
       - Translate the raw Type to readable format from 00000 -> MRd
   */
   static TlpType translatePacketType(std::uint8_t rawType);
+
+  /*
+      - Resolve the final TlpType by combining the raw type bits with the
+        hasData flag from the already-decoded Fmt field
+  */
+  static TlpType resolveType(std::uint8_t rawType, bool hasData);
 
   /*
      - Translate the raw Status to readable format from 000 -> SC (success)

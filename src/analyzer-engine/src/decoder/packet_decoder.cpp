@@ -1,6 +1,7 @@
 #include "analyzer-engine/decoder/packet_decoder.h"
 #include "analyzer-engine/core/packet/packet.h"
 #include "analyzer-engine/utils/utils.h"
+#include <iomanip>
 #include <sstream>
 
 // parsePacketDws: Divide the packet raw hexa into double words
@@ -40,6 +41,14 @@ TlpType PacketDecoder::translatePacketType(std::uint8_t rawType) {
   return TlpType::UNKNOWN;
 }
 
+TlpType PacketDecoder::resolveType(std::uint8_t rawType, bool hasData) {
+  if (rawType == MEMORY_TYPE)
+    return hasData ? TlpType::MWr : TlpType::MRd;
+  if (rawType == COMPLETION_TYPE)
+    return hasData ? TlpType::CplD : TlpType::Cpl;
+  return TlpType::UNKNOWN;
+}
+
 CompletionStatus
 PacketDecoder::translatePacketCompletionStatus(std::uint8_t rawStatus) {
   auto iterator = completionStatusMap.find(rawStatus);
@@ -56,25 +65,21 @@ std::string PacketDecoder::translateBdfId(std::uint16_t rawId) {
   std::uint8_t function = rawId & 0x07;
 
   // Store the Translated ID
-  std::stringstream id{};
+  std::ostringstream id{};
+
+  // Set the number base for the input numbers to Hexadecimal
+  id << std::hex << std::setfill('0');
 
   // Domain (always 0000)
   id << "0000:";
 
-  // Set the number base for the input numbers to Hexadecimal
-  id << std::hex;
-  id.width(2);
-  id.fill('0');
-  id << static_cast<unsigned int>(bus);
+  id << std::setw(2) << static_cast<unsigned int>(bus);
   id << ':';
 
-  id.width(2);
-  id.fill('0');
-  id << static_cast<unsigned int>(device);
+  id << std::setw(2) << static_cast<unsigned int>(device);
   id << '.';
 
-  id.width(1);
-  id << static_cast<unsigned int>(function);
+  id << std::setw(1) << static_cast<unsigned int>(function);
 
   return id.str();
 }
@@ -141,19 +146,29 @@ TLP PacketDecoder::decode(const Packet &packet) {
     tlp.m_decodeErrors.push_back({"DEC-001", "Fmt [31:29]",
                                   "Illegal Fmt value (" + std::to_string(fmt) +
                                       "). Only 000–011 are valid."});
+    return tlp;
   }
   tlp.m_fmt = translatedFmt.type;
 
   // Translated type extracted bits into reaadable format
   std::uint8_t type =
       static_cast<std::uint8_t>(Utils::extractBits(dw0, 24, 28));
-  TlpType translatedTlpType = PacketDecoder::translatePacketType(type);
+
+  if (type == MEMORY_TYPE || type == COMPLETION_TYPE) {
+    bool rawTypeExpectsData = (type == COMPLETION_TYPE) ? false : false;
+
+    (void)rawTypeExpectsData;
+  }
+
+  TlpType translatedTlpType =
+      PacketDecoder::resolveType(type, translatedFmt.hasData);
 
   if (translatedTlpType == TlpType::UNKNOWN) {
     tlp.m_isMalformed = true;
     tlp.m_decodeErrors.push_back(
         {"DEC-002", "Type [28:24]",
          "Unsupported TLP Type value (" + std::to_string(type) + ")."});
+    return tlp;
   }
   tlp.m_type = translatedTlpType;
 
@@ -161,12 +176,35 @@ TLP PacketDecoder::decode(const Packet &packet) {
   if (translatedFmt.type != Fmt::UNKNOWN &&
       translatedTlpType != TlpType::UNKNOWN) {
     bool fmtHasData = translatedFmt.hasData;
-    bool typeNeedsData = (translatedTlpType == TlpType::MWr ||
-                          translatedTlpType == TlpType::CplD);
-    bool typeNeedsNoData = (translatedTlpType == TlpType::MRd ||
-                            translatedTlpType == TlpType::Cpl);
 
-    if (typeNeedsData && !fmtHasData) {
+    TlpType baseTypeNoData = PacketDecoder::resolveType(type, false);
+    TlpType baseTypeWithData = PacketDecoder::resolveType(type, true);
+
+    bool typeNeedsData = (baseTypeWithData != TlpType::UNKNOWN &&
+                          baseTypeNoData != TlpType::UNKNOWN)
+                             ? false
+                             : (baseTypeWithData != TlpType::UNKNOWN);
+    bool typeNeedsNoData = (baseTypeWithData != TlpType::UNKNOWN &&
+                            baseTypeNoData != TlpType::UNKNOWN)
+                               ? false
+                               : (baseTypeNoData != TlpType::UNKNOWN);
+
+    bool resolvedIsMemory = (translatedTlpType == TlpType::MRd ||
+                             translatedTlpType == TlpType::MWr);
+    bool resolvedIsCompletion = (translatedTlpType == TlpType::Cpl ||
+                                 translatedTlpType == TlpType::CplD);
+    bool rawIsMemory = (type == MEMORY_TYPE);
+    bool rawIsCompletion = (type == COMPLETION_TYPE);
+
+    if ((resolvedIsMemory && !rawIsMemory) ||
+        (resolvedIsCompletion && !rawIsCompletion)) {
+      // The Fmt's hasData flipped the type family — that is a genuine mismatch.
+      tlp.m_isMalformed = true;
+      tlp.m_decodeErrors.push_back(
+          {"DEC-002", "Type [28:24]",
+           "Fmt/Type mismatch: resolved TLP type family does not match the "
+           "raw Type field."});
+    } else if (typeNeedsData && !fmtHasData) {
       tlp.m_isMalformed = true;
       tlp.m_decodeErrors.push_back({"DEC-002", "Type [28:24]",
                                     "Fmt/Type mismatch: Type requires a "
@@ -205,8 +243,7 @@ TLP PacketDecoder::decode(const Packet &packet) {
   std::uint16_t length =
       static_cast<std::uint16_t>(Utils::extractBits(dw0, 0, 9));
 
-  if (tlp.m_type == TlpType::MRd || tlp.m_type == TlpType::MWr ||
-      tlp.m_type == TlpType::CplD) {
+  if (tlp.m_type == TlpType::MWr || tlp.m_type == TlpType::CplD) {
     if (length == 0) {
       tlp.m_isMalformed = true;
       tlp.m_decodeErrors.push_back(
@@ -217,6 +254,7 @@ TLP PacketDecoder::decode(const Packet &packet) {
       tlp.m_lengthDw = length;
     }
   } else {
+    // No-data types (MRd, Cpl): length field must be zero.
     if (length != 0) {
       tlp.m_isMalformed = true;
       tlp.m_decodeErrors.push_back(
@@ -282,7 +320,9 @@ TLP PacketDecoder::decode(const Packet &packet) {
     }
 
     // Assign the address
-    tlp.m_address = address;
+    if (!tlp.m_isMalformed) {
+      tlp.m_address = address;
+    }
   } else if (isCompletion) {
     // Translate Requester Id into BDF string format [Bus]:[Device]:[Function]
     rawRequesterId =
@@ -299,8 +339,7 @@ TLP PacketDecoder::decode(const Packet &packet) {
     tlp.m_completerId = completerId;
 
     // Extract and Translate the raw completion status into readable format
-    std::uint8_t status =
-        static_cast<std::uint8_t>(Utils::extractBits(dw1, 13, 15));
+    std::uint8_t status = static_cast<std::uint8_t>((dw1 >> 13) & 0x7u);
     CompletionStatus translatedCompletionStatus =
         translatePacketCompletionStatus(status);
     if (translatedCompletionStatus == CompletionStatus::UNKNOWN) {
