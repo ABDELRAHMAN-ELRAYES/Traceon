@@ -20,17 +20,17 @@ class PacketDecoder;
 */
 class Packet {
 private:
-  std::uint64_t m_timestamp{};
-  Direction m_direction{};
-  std::uint64_t m_index{};
-  std::string m_rawBytes{};
+  std::uint64_t timestamp_{};
+  Direction direction_{};
+  std::uint64_t index_{};
+  std::string raw_bytes_{};
 
 public:
   Packet() = default;
   Packet(std::uint64_t timestamp, Direction direction, std::uint64_t index,
          std::string rawBytes);
   void print() const;
-  std::uint64_t index() const { return m_index; }
+  std::uint64_t index() const { return index_; }
   friend class PacketDecoder;
 };
 

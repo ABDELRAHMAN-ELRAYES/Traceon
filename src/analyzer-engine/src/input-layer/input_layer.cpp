@@ -10,8 +10,8 @@
 #include <vector>
 
 TraceInputLayer::TraceInputLayer(const std::filesystem::path &path)
-    : file(path) {
-  if (!file.is_open()) {
+    : file_(path) {
+  if (!file_.is_open()) {
     throw TraceInputException("Failed to open trace file");
   }
 }
@@ -21,7 +21,7 @@ TraceInputLayer::TraceInputLayer(const std::filesystem::path &path)
  * @return true if the file is completely read
  * @return false
  */
-bool TraceInputLayer::isExhausted() { return file.eof(); }
+bool TraceInputLayer::isExhausted() { return file_.eof(); }
 
 /**
  * @brief Read the file line by line and Form the Raw Packet
@@ -30,7 +30,7 @@ bool TraceInputLayer::isExhausted() { return file.eof(); }
  */
 std::optional<Packet> TraceInputLayer::next() {
   std::string line{};
-  std::getline(file, line);
+  std::getline(file_, line);
 
   // Ignore Empty / Comments lines
   if ((!line.empty() && line[0] == '#') || line.empty())
@@ -56,7 +56,7 @@ std::optional<Packet> TraceInputLayer::next() {
   std::uint64_t timestamp{std::stoull(cols[0])};
   std::string directionStr{cols[1]}, rawBytes{cols[2]};
   Packet packet{timestamp, Utils::stringToDirection(directionStr),
-                m_packetCounter++, rawBytes};
+                packet_counter_++, rawBytes};
 
   return packet;
 }

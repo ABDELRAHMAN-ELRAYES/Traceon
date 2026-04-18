@@ -86,22 +86,22 @@ std::string PacketDecoder::translateBdfId(std::uint16_t rawId) {
 
 TLP PacketDecoder::decode(const Packet &packet) {
   // Get the main fields of the packet
-  std::uint64_t timestamp = packet.m_timestamp;
-  Direction direction = packet.m_direction;
-  std::string hexaRawBytes = packet.m_rawBytes;
+  std::uint64_t timestamp = packet.timestamp_;
+  Direction direction = packet.direction_;
+  std::string hexaRawBytes = packet.raw_bytes_;
 
   // The Number of Digits of the raw bytes
   std::size_t rawBytesSize = hexaRawBytes.size();
 
   // Create a TLP instance
   TLP tlp{};
-  tlp.m_index = packet.index();
+  tlp.index_ = packet.index();
 
   // [DEC-007] Check if the payload contains non-hexadecimal characters
   for (char c : hexaRawBytes) {
     if (!std::isxdigit(static_cast<unsigned char>(c))) {
-      tlp.m_isMalformed = true;
-      tlp.m_decodeErrors.push_back(
+      tlp.is_malformed_ = true;
+      tlp.decode_errors_.push_back(
           {"DEC-007", "payload_hex",
            "The payload contains non-hexadecimal characters."});
       return tlp;
@@ -110,8 +110,8 @@ TLP PacketDecoder::decode(const Packet &packet) {
 
   // Check if the digits number less than 3DW(24 digits)
   if (rawBytesSize < 3 * DW_HEXA_DIGITS_NUMBER) {
-    tlp.m_isMalformed = true;
-    tlp.m_decodeErrors.push_back(
+    tlp.is_malformed_ = true;
+    tlp.decode_errors_.push_back(
         {"DEC-003", "payload_hex",
          "Raw hex string is shorter than the minimum TLP size (3 DW = 24 hex "
          "digits)."});
@@ -120,8 +120,8 @@ TLP PacketDecoder::decode(const Packet &packet) {
 
   // Check if the digits number is consists of fixed number of DW size
   if (rawBytesSize % DW_HEXA_DIGITS_NUMBER != 0) {
-    tlp.m_isMalformed = true;
-    tlp.m_decodeErrors.push_back(
+    tlp.is_malformed_ = true;
+    tlp.decode_errors_.push_back(
         {"DEC-003", "payload_hex",
          "Raw hex string length is not a multiple of one DW (8 hex digits). "
          "Packet is truncated."});
@@ -143,13 +143,13 @@ TLP PacketDecoder::decode(const Packet &packet) {
   TranslatedFmt translatedFmt = PacketDecoder::translateFmtHeader(fmt);
 
   if (translatedFmt.type == Fmt::UNKNOWN) {
-    tlp.m_isMalformed = true;
-    tlp.m_decodeErrors.push_back({"DEC-001", "Fmt [31:29]",
+    tlp.is_malformed_ = true;
+    tlp.decode_errors_.push_back({"DEC-001", "Fmt [31:29]",
                                   "Illegal Fmt value (" + std::to_string(fmt) +
                                       "). Only 000–011 are valid."});
     return tlp;
   }
-  tlp.m_fmt = translatedFmt.type;
+  tlp.fmt_ = translatedFmt.type;
 
   // Translated type extracted bits into reaadable format
   std::uint8_t type =
@@ -165,13 +165,13 @@ TLP PacketDecoder::decode(const Packet &packet) {
       PacketDecoder::resolveType(type, translatedFmt.hasData);
 
   if (translatedTlpType == TlpType::UNKNOWN) {
-    tlp.m_isMalformed = true;
-    tlp.m_decodeErrors.push_back(
+    tlp.is_malformed_ = true;
+    tlp.decode_errors_.push_back(
         {"DEC-002", "Type [28:24]",
          "Unsupported TLP Type value (" + std::to_string(type) + ")."});
     return tlp;
   }
-  tlp.m_type = translatedTlpType;
+  tlp.type_ = translatedTlpType;
 
   // Fmt <-> Type cross-validation
   if (translatedFmt.type != Fmt::UNKNOWN &&
@@ -200,20 +200,20 @@ TLP PacketDecoder::decode(const Packet &packet) {
     if ((resolvedIsMemory && !rawIsMemory) ||
         (resolvedIsCompletion && !rawIsCompletion)) {
       // The Fmt's hasData flipped the type family — that is a genuine mismatch.
-      tlp.m_isMalformed = true;
-      tlp.m_decodeErrors.push_back(
+      tlp.is_malformed_ = true;
+      tlp.decode_errors_.push_back(
           {"DEC-002", "Type [28:24]",
            "Fmt/Type mismatch: resolved TLP type family does not match the "
            "raw Type field."});
     } else if (typeNeedsData && !fmtHasData) {
-      tlp.m_isMalformed = true;
-      tlp.m_decodeErrors.push_back({"DEC-002", "Type [28:24]",
+      tlp.is_malformed_ = true;
+      tlp.decode_errors_.push_back({"DEC-002", "Type [28:24]",
                                     "Fmt/Type mismatch: Type requires a "
                                     "data-carrying Fmt but Fmt has no "
                                     "data."});
     } else if (typeNeedsNoData && fmtHasData) {
-      tlp.m_isMalformed = true;
-      tlp.m_decodeErrors.push_back(
+      tlp.is_malformed_ = true;
+      tlp.decode_errors_.push_back(
           {"DEC-002", "Type [28:24]",
            "Fmt/Type mismatch: Type requires a no-data Fmt but Fmt carries "
            "data."});
@@ -222,7 +222,7 @@ TLP PacketDecoder::decode(const Packet &packet) {
 
   // Extract and Assign the TC value
   std::uint8_t tc = static_cast<std::uint8_t>(Utils::extractBits(dw0, 20, 22));
-  tlp.m_tc = tc;
+  tlp.tc_ = tc;
 
   // Extract and Assign the Attributes fields
   std::uint8_t noSnoop =
@@ -231,19 +231,19 @@ TLP PacketDecoder::decode(const Packet &packet) {
       static_cast<std::uint8_t>(Utils::extractBits(dw0, 12, 12));
 
   Attr attr{noSnoop != 0, relaxedOrdering != 0};
-  tlp.m_attr = attr;
+  tlp.attr_ = attr;
 
   // Extract and Assign the length of Double Word if its not null(equals to
   // zero)
   std::uint16_t length =
       static_cast<std::uint16_t>(Utils::extractBits(dw0, 0, 9));
 
-  if (tlp.m_type == TlpType::MRd || tlp.m_type == TlpType::MWr ||
-      tlp.m_type == TlpType::CplD) {
-    tlp.m_lengthDw = length;
+  if (tlp.type_ == TlpType::MRd || tlp.type_ == TlpType::MWr ||
+      tlp.type_ == TlpType::CplD) {
+    tlp.length_dw_ = length;
   } else {
     // No-data types without length (Cpl): length field should be zero
-    tlp.m_lengthDw = length;
+    tlp.length_dw_ = length;
   }
 
   // Declare the requesterId and Tag -> Extract their values based on the packet
@@ -253,9 +253,9 @@ TLP PacketDecoder::decode(const Packet &packet) {
   std::uint8_t tag{};
   std::uint64_t address{};
 
-  bool isRequest = (tlp.m_type == TlpType::MRd || tlp.m_type == TlpType::MWr);
+  bool isRequest = (tlp.type_ == TlpType::MRd || tlp.type_ == TlpType::MWr);
   bool isCompletion =
-      (tlp.m_type == TlpType::Cpl || tlp.m_type == TlpType::CplD);
+      (tlp.type_ == TlpType::Cpl || tlp.type_ == TlpType::CplD);
 
   if (isRequest) {
     // Translate Requester Id into BDF string format [Bus]:[Device]:[Function]
@@ -265,7 +265,7 @@ TLP PacketDecoder::decode(const Packet &packet) {
 
     tag = static_cast<std::uint8_t>(Utils::extractBits(dw1, 8, 15));
 
-    bool is4DW = (tlp.m_fmt == Fmt::DW4);
+    bool is4DW = (tlp.fmt_ == Fmt::DW4);
 
     if (!is4DW) {
       // Neglect the lowest two bits of the DW2 - they are always used for
@@ -274,14 +274,14 @@ TLP PacketDecoder::decode(const Packet &packet) {
 
       // [DEC-004] Check 3DW address alignment
       if ((dw2 & 0x3) != 0) {
-        tlp.m_isMalformed = true;
-        tlp.m_decodeErrors.push_back({"DEC-004", "Address [31:2] (3DW)",
+        tlp.is_malformed_ = true;
+        tlp.decode_errors_.push_back({"DEC-004", "Address [31:2] (3DW)",
                                       "32-bit address is not DW aligned."});
       }
     } else {
       if (dws.size() < 4) {
-        tlp.m_isMalformed = true;
-        tlp.m_decodeErrors.push_back(
+        tlp.is_malformed_ = true;
+        tlp.decode_errors_.push_back(
             {"DEC-003", "Payload bytes",
              "Malformed 4DW packet: expected at least 4 DWs but found fewer."});
       } else {
@@ -293,16 +293,16 @@ TLP PacketDecoder::decode(const Packet &packet) {
 
         // [DEC-005] Check 4DW address alignment
         if ((dw3 & 0x3) != 0) {
-          tlp.m_isMalformed = true;
-          tlp.m_decodeErrors.push_back({"DEC-005", "Address [63:2] (4DW)",
+          tlp.is_malformed_ = true;
+          tlp.decode_errors_.push_back({"DEC-005", "Address [63:2] (4DW)",
                                         "64-bit address is not DW aligned."});
         }
       }
     }
 
     // Assign the address
-    if (!tlp.m_isMalformed) {
-      tlp.m_address = address;
+    if (!tlp.is_malformed_) {
+      tlp.address_ = address;
     }
   } else if (isCompletion) {
     // Translate Requester Id into BDF string format [Bus]:[Device]:[Function]
@@ -312,33 +312,32 @@ TLP PacketDecoder::decode(const Packet &packet) {
 
     tag = static_cast<std::uint8_t>(Utils::extractBits(dw2, 8, 15));
 
-    // Translate Completer Id into BDF string format [Bus]:[Device]:[Function]
     std::uint16_t rawCompleterId =
         static_cast<std::uint16_t>(Utils::extractBits(dw1, 16, 31));
     std::string completerId = PacketDecoder::translateBdfId(rawCompleterId);
 
-    tlp.m_completerId = completerId;
+    tlp.completer_id_ = completerId;
 
     // Extract and Translate the raw completion status into readable format
     std::uint8_t status = static_cast<std::uint8_t>((dw1 >> 13) & 0x7u);
     CompletionStatus translatedCompletionStatus =
         translatePacketCompletionStatus(status);
     if (translatedCompletionStatus == CompletionStatus::UNKNOWN) {
-      tlp.m_isMalformed = true;
-      tlp.m_decodeErrors.push_back({"DEC-006", "Status [15:13]",
+      tlp.is_malformed_ = true;
+      tlp.decode_errors_.push_back({"DEC-006", "Status [15:13]",
                                     "Illegal completion status value (" +
                                         std::to_string(status) + ")."});
     }
-    tlp.m_status = translatedCompletionStatus;
+    tlp.status_ = translatedCompletionStatus;
 
     // Extract the byte count
     std::uint16_t byteCount =
         static_cast<std::uint16_t>(Utils::extractBits(dw1, 0, 11));
-    tlp.m_byteCount = byteCount;
+    tlp.byte_count_ = byteCount;
   }
 
-  tlp.m_requesterId = requesterId;
-  tlp.m_tag = tag;
+  tlp.requester_id_ = requesterId;
+  tlp.tag_ = tag;
 
   return tlp;
 }

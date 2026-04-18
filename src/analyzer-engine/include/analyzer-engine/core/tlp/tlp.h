@@ -11,8 +11,8 @@ enum class TlpType { MRd, MWr, CplD, Cpl, UNKNOWN };
 enum class Fmt { DW3, DW4, UNKNOWN };
 enum class CompletionStatus { SC, UR, CA, UNKNOWN };
 struct Attr {
-  bool noSnoop;
-  bool relaxedOrdering;
+  bool no_snoop;
+  bool relaxed_ordering;
 };
 
 class PacketDecoder;
@@ -21,45 +21,45 @@ class PacketDecoder;
 */
 class TLP {
 private:
-  TlpType m_type;
-  Fmt m_fmt;
-  Attr m_attr;
+  TlpType type_;
+  Fmt fmt_;
+  Attr attr_;
 
-  std::string m_requesterId;
-  std::optional<std::string> m_completerId;
+  std::string requester_id_;
+  std::optional<std::string> completer_id_;
 
-  std::uint8_t m_tag;
-  std::uint8_t m_tc;
-  std::optional<std::uint64_t> m_address{};
-  std::optional<std::uint64_t> m_lengthDw{};
-  std::optional<std::uint64_t> m_byteCount{};
-  std::optional<CompletionStatus> m_status{};
+  std::uint8_t tag_;
+  std::uint8_t tc_;
+  std::optional<std::uint64_t> address_{};
+  std::optional<std::uint64_t> length_dw_{};
+  std::optional<std::uint64_t> byte_count_{};
+  std::optional<CompletionStatus> status_{};
 
-  bool m_isMalformed{};
-  std::uint64_t m_index{};
-  std::vector<DecodeError> m_decodeErrors{};
+  bool is_malformed_{};
+  std::uint64_t index_{};
+  std::vector<DecodeError> decode_errors_{};
 
 public:
   TLP() = default;
   TLP(TlpType type, Fmt fmt, Attr attr, std::string requesterId,
       std::uint8_t tag, std::uint8_t tc, std::uint64_t index);
 
-  TlpType type() const { return m_type; }
-  Fmt fmt() const { return m_fmt; }
-  const std::string &requesterId() const { return m_requesterId; }
+  TlpType type() const { return type_; }
+  Fmt fmt() const { return fmt_; }
+  const std::string &requesterId() const { return requester_id_; }
   const std::optional<std::string> &completerId() const {
-    return m_completerId;
+    return completer_id_;
   }
-  std::uint8_t tag() const { return m_tag; }
-  std::uint8_t tc() const { return m_tc; }
-  std::optional<std::uint64_t> address() const { return m_address; }
-  std::optional<std::uint64_t> lengthDw() const { return m_lengthDw; }
-  std::optional<std::uint64_t> byteCount() const { return m_byteCount; }
-  std::optional<CompletionStatus> status() const { return m_status; }
-  bool isMalformed() const { return m_isMalformed; }
-  std::uint64_t index() const { return m_index; }
+  std::uint8_t tag() const { return tag_; }
+  std::uint8_t tc() const { return tc_; }
+  std::optional<std::uint64_t> address() const { return address_; }
+  std::optional<std::uint64_t> lengthDw() const { return length_dw_; }
+  std::optional<std::uint64_t> byteCount() const { return byte_count_; }
+  std::optional<CompletionStatus> status() const { return status_; }
+  bool isMalformed() const { return is_malformed_; }
+  std::uint64_t index() const { return index_; }
   const std::vector<DecodeError> &decodeErrors() const {
-    return m_decodeErrors;
+    return decode_errors_;
   }
 
   void printPacketDetails();

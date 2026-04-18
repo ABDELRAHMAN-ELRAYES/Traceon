@@ -8,8 +8,8 @@
 
 class TraceInputLayer {
 private:
-  std::ifstream file;
-  std::uint64_t m_packetCounter{0};
+  std::ifstream file_;
+  std::uint64_t packet_counter_{0};
 
 public:
   explicit TraceInputLayer(const std::filesystem::path &path);

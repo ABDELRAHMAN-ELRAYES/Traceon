@@ -7,14 +7,14 @@
 */
 Packet::Packet(std::uint64_t timestamp, Direction direction, std::uint64_t index,
                std::string rawBytes)
-    : m_timestamp{timestamp}, m_direction{direction}, m_index{index},
-      m_rawBytes{std::move(rawBytes)} {}
+    : timestamp_{timestamp}, direction_{direction}, index_{index},
+      raw_bytes_{std::move(rawBytes)} {}
 
 /*
     - Print Packet Information
 */
 void Packet::print() const {
-  std::cout << "Timestamp: " << m_timestamp << "\n"
-            << "Direction: " << Utils::directionToString(m_direction) << "\n"
-            << "Raw Bytes: " << m_rawBytes << "\n";
+  std::cout << "Timestamp: " << timestamp_ << "\n"
+            << "Direction: " << Utils::directionToString(direction_) << "\n"
+            << "Raw Bytes: " << raw_bytes_ << "\n";
 }

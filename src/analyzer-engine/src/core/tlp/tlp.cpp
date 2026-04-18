@@ -9,22 +9,22 @@
 */
 TLP::TLP(TlpType type, Fmt fmt, Attr attr, std::string requesterId,
          std::uint8_t tag, std::uint8_t tc, std::uint64_t index)
-    : m_type(type), m_fmt(fmt), m_attr(attr),
-      m_requesterId(std::move(requesterId)), m_completerId(std::nullopt),
-      m_tag(tag), m_tc(tc), m_address(std::nullopt), m_lengthDw(std::nullopt),
-      m_byteCount(std::nullopt), m_status(std::nullopt), m_isMalformed(false),
-      m_index(index), m_decodeErrors() {}
+    : type_(type), fmt_(fmt), attr_(attr),
+      requester_id_(std::move(requesterId)), completer_id_(std::nullopt),
+      tag_(tag), tc_(tc), address_(std::nullopt), length_dw_(std::nullopt),
+      byte_count_(std::nullopt), status_(std::nullopt), is_malformed_(false),
+      index_(index), decode_errors_() {}
 
 void TLP::printPacketDetails() {
   using std::cout;
   using std::endl;
 
-  std::string tlpTypeToStr = Utils::tlpTypeToString(m_type);
+  std::string tlpTypeToStr = Utils::tlpTypeToString(type_);
 
-  std::string fmtToStr = Utils::fmtToStr(m_fmt);
+  std::string fmtToStr = Utils::fmtToStr(fmt_);
   std::string cplStatusToStr = "Unknown";
-  if (m_status.has_value()) {
-    std::string cplStatusToStr = Utils::completionStatusToStr(m_status.value());
+  if (status_.has_value()) {
+    cplStatusToStr = Utils::completionStatusToStr(status_.value());
   }
 
   cout << "========== PCIe TLP ==========" << endl;
@@ -32,47 +32,47 @@ void TLP::printPacketDetails() {
   cout << "Type            : " << tlpTypeToStr << endl;
   cout << "Format          : " << fmtToStr << endl;
 
-  cout << "Requester ID    : " << m_requesterId << endl;
+  cout << "Requester ID    : " << requester_id_ << endl;
 
-  if (m_completerId.has_value()) {
-    cout << "Completer ID    : " << m_completerId.value() << endl;
+  if (completer_id_.has_value()) {
+    cout << "Completer ID    : " << completer_id_.value() << endl;
   }
 
-  cout << "Tag             : 0x" << static_cast<int>(m_tag) << endl;
+  cout << "Tag             : 0x" << static_cast<int>(tag_) << endl;
 
-  cout << "Traffic Class   : " << static_cast<int>(m_tc) << endl;
+  cout << "Traffic Class   : " << static_cast<int>(tc_) << endl;
 
   cout << "Attributes      : "
-       << "No Snoop=" << (m_attr.noSnoop ? "true" : "false") << ", "
-       << "Relaxed Ordering=" << (m_attr.relaxedOrdering ? "true" : "false")
+       << "No Snoop=" << (attr_.no_snoop ? "true" : "false") << ", "
+       << "Relaxed Ordering=" << (attr_.relaxed_ordering ? "true" : "false")
        << endl;
 
-  if (m_address) {
-    cout << "Address         : 0x" << std::hex << *m_address << std::dec
+  if (address_) {
+    cout << "Address         : 0x" << std::hex << *address_ << std::dec
          << endl;
   }
 
-  if (m_lengthDw) {
-    cout << "Length (DW)     : " << *m_lengthDw << endl;
+  if (length_dw_) {
+    cout << "Length (DW)     : " << *length_dw_ << endl;
   }
 
-  if (m_byteCount) {
-    cout << "Byte Count      : " << *m_byteCount << endl;
+  if (byte_count_) {
+    cout << "Byte Count      : " << *byte_count_ << endl;
   }
 
-  if (m_status) {
+  if (status_) {
     cout << "Completion Stat : " << cplStatusToStr << endl;
   }
 
-  if (m_isMalformed) {
+  if (is_malformed_) {
     cout << "Packet Status : MALFORMED" << endl;
   } else {
     cout << "Packet Status   : OK" << endl;
   }
 
-  if (!m_decodeErrors.empty()) {
+  if (!decode_errors_.empty()) {
     cout << "Decode Errors   :" << endl;
-    for (const auto &err : m_decodeErrors) {
+    for (const auto &err : decode_errors_) {
       cout << "  - [" << err.rule_id << "] Field: " << err.field << " - "
            << err.description << endl;
     }
