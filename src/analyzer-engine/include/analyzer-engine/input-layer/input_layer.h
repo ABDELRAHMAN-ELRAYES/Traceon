@@ -6,10 +6,10 @@
 #include <fstream>
 #include <optional>
 
-
 class TraceInputLayer {
 private:
   std::ifstream file;
+  std::uint64_t m_packetCounter{0};
 
 public:
   explicit TraceInputLayer(const std::filesystem::path &path);

@@ -1,6 +1,7 @@
 
 #include "analyzer-engine/input-layer/input_layer.h"
 #include "analyzer-engine/input-layer/input_exception.h"
+#include "analyzer-engine/utils/utils.h"
 
 #include <filesystem>
 #include <optional>
@@ -53,8 +54,9 @@ std::optional<Packet> TraceInputLayer::next() {
     return std::nullopt;
 
   std::uint64_t timestamp{std::stoull(cols[0])};
-  std::string direction{cols[1]}, rawBytes{cols[2]};
-  Packet packet{timestamp, direction, rawBytes};
+  std::string directionStr{cols[1]}, rawBytes{cols[2]};
+  Packet packet{timestamp, Utils::stringToDirection(directionStr),
+                m_packetCounter++, rawBytes};
 
   return packet;
 }

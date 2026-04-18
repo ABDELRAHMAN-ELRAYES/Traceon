@@ -377,22 +377,9 @@ No TLP may be both malformed and the subject of a validation error. The validati
 
 ## 10. Validation Rule Registry
 
-The following validation rules are evaluated by the `ProtocolValidator` during and after trace processing. Each rule is associated with an error category that appears in the report output. All rules are evaluated against non-malformed TLPs only.
+The validation rules evaluated by the `ProtocolValidator` are maintained in a separate registry to facilitate extension and prevent documentation bloat.
 
-| Rule ID | Category | Trigger | Description |
-|---|---|---|---|
-| VAL-001 | `UNEXPECTED_COMPLETION` | A CplD or Cpl is observed, but the outstanding-request table contains no entry for the `(requester_id, tag)` key present in the completion. | A completion arrived for a transaction that was never initiated, or for a transaction whose entry was already removed by a prior completion. |
-| VAL-002 | `MISSING_COMPLETION` | After all packets are processed, one or more entries remain in the outstanding-request table. | An MRd was issued but never received a corresponding CplD before the trace ended. Reported during the `finalize()` phase. |
-| VAL-003 | `DUPLICATE_COMPLETION` | A CplD is observed for a `(requester_id, tag)` key, but the outstanding-request table entry for that key was already removed by a prior CplD. | The completer sent two data completions for the same transaction, which is a protocol violation. |
-| VAL-004 | `BYTE_COUNT_MISMATCH` | The `byte_count` field in a CplD does not equal the value implied by the `length_dw` field of the corresponding MRd request. | The amount of data acknowledged in the completion does not match the amount requested. |
-| VAL-005 | `ILLEGAL_TAG_REUSE` | An MRd is observed with a `(requester_id, tag)` key that already exists in the outstanding-request table — that is, a tag is reused before its prior transaction is complete. | The requester has recycled a transaction tag before the previous use of that tag was resolved by a completion. |
-| VAL-006 | `RESERVED_TC_VALUE` | A TLP carries a Traffic Class value that is reserved for a specific functional role not appropriate for the observed TLP type. | Reserved TC values are being used outside their defined scope, indicating a possible firmware or driver defect. |
-| VAL-007 | `INVALID_COMPLETION_STATUS` | A CplD or Cpl carries the SC status code, but other observable fields indicate the transaction did not complete successfully. | The status field and the behavioral context are contradictory. |
-| VAL-008 | `ADDRESS_RANGE_VIOLATION` | An MRd or MWr targets an address that falls within a range designated in the configuration as reserved or inaccessible. | The requester is attempting to access a memory region that should not be reachable through normal PCIe transactions. |
-
-### 10.1 Rule Extensibility Contract
-
-The validation rule registry is designed for extension without modification. Each rule is an independent, self-describing entity. To add a new validation rule, a developer creates a new rule object, assigns it the next available VAL-xxx identifier, and registers it with the rule registry. The `ProtocolValidator` discovers and evaluates all registered rules automatically. No modification to any other component — the decoder, the input layer, the reporting layer, or the orchestrator — is required.
+For the complete registry of Phase 1 validation rules, including Rule IDs, triggering conditions, and categories, refer to the [Validation Rule Registry](validation_rule_registry.md).
 
 ---
 

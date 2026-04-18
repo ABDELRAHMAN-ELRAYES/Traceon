@@ -6,6 +6,7 @@ add_library(analyzer_engine_lib STATIC
     src/utils/utils.cpp
     src/input-layer/input_layer.cpp
     src/input-layer/input_exception.cpp
+    src/validator/protocol_validator.cpp
 )
 
 # Tell the rest of the project where the analyzer engine public headers are

@@ -5,10 +5,10 @@
 /*
     - Construct a Packet
 */
-Packet::Packet(std::uint64_t timestamp, std::string direction,
+Packet::Packet(std::uint64_t timestamp, Direction direction, std::uint64_t index,
                std::string rawBytes)
-    : m_timestamp{timestamp}, m_direction{Utils::stringToDirection(direction)},
-      m_rawBytes{rawBytes} {}
+    : m_timestamp{timestamp}, m_direction{direction}, m_index{index},
+      m_rawBytes{std::move(rawBytes)} {}
 
 /*
     - Print Packet Information

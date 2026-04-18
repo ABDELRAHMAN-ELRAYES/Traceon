@@ -1,5 +1,5 @@
-#ifndef DECODE_ERROR
-#define DECODE_ERROR
+#ifndef DECODE_ERROR_H
+#define DECODE_ERROR_H
 
 #include <string>
 

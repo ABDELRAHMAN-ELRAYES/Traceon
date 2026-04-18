@@ -11,19 +11,17 @@ This document serves as the authoritative registry for all structural decode err
 
 ## 1. Rule Definition Table
 
-The following nine rules are evaluated during the decoding of each packet. A violation of any rule results in the `TLP.is_malformed` flag being set to `true`.
+The following seven rules are evaluated during the decoding of each packet. A violation of any rule results in the `TLP.is_malformed` flag being set to `true`.
 
 | Rule ID | Field | Triggering Condition | Description |
 | :--- | :--- | :--- | :--- |
 | **DEC-001** | `Fmt [31:29]` | The Fmt field value is one of the reserved combinations (`0b110` or `0b111`). | Detects use of PCIe format codes that are not defined in the base specification. |
 | **DEC-002** | `Type [28:24]` | The Type field value, in combination with the Fmt field, does not correspond to a supported TLP. | Identifies unsupported transactions or Fmt/Type mismatches (e.g., MWr with no-data Fmt). |
-| **DEC-003** | `TC [22:20]` | The Traffic Class field contains a value outside the valid range of 0 through 7. | In Phase 1, any value extracted from these 3 bits is within the 0-7 range, but this rule ensures future-proof priority boundary checks. |
-| **DEC-004** | `Length [9:0]` | The Length field is zero, which is reserved and illegal for packets requiring a length. | Prevents processing of packets with an invalid zero-length field. |
-| **DEC-005** | `payload_hex` | The total number of bytes is insufficient for the header size implied by the Fmt field. | Minimum requirements: 12 bytes for 3DW headers, 16 bytes for 4DW headers. |
-| **DEC-006** | `Address [31:2]` | The 32-bit address in a 3DW Memory TLP is not aligned to a Double Word boundary. | The two least-significant bits ([1:0]) of the target address must be zero. |
-| **DEC-007** | `Address [63:2]` | The 64-bit address in a 4DW Memory TLP is not aligned to a Double Word boundary. | The two least-significant bits ([1:0]) of the 64-bit target address must be zero. |
-| **DEC-008** | `Status [15:13]` | The Completion Status field contains a value that is not a defined completion code. | Valid codes: SC (`000`), UR (`001`), or CA (`100`). All other values are invalid. |
-| **DEC-009** | `payload_hex` | The `payload_hex` string contains characters that are not valid hexadecimal digits. | Ensures that numeric interpretation of the trace data is actually possible. |
+| **DEC-003** | `payload_hex` | The total number of bytes is insufficient for the header size implied by the Fmt field, or length is not a multiple of 4 bytes. | Minimum requirements: 12 bytes for 3DW headers, 16 bytes for 4DW headers. |
+| **DEC-004** | `Address [31:2]` | The 32-bit address in a 3DW Memory TLP is not aligned to a Double Word boundary. | The two least-significant bits ([1:0]) of the target address must be zero. |
+| **DEC-005** | `Address [63:2]` | The 64-bit address in a 4DW Memory TLP is not aligned to a Double Word boundary. | The two least-significant bits ([1:0]) of the 64-bit target address must be zero. |
+| **DEC-006** | `Status [15:13]` | The Completion Status field contains a value that is not a defined completion code. | Valid codes: SC (`000`), UR (`001`), or CA (`100`). All other values are invalid. |
+| **DEC-007** | `payload_hex` | The `payload_hex` string contains characters that are not valid hexadecimal digits. | Ensures that numeric interpretation of the trace data is actually possible. |
 
 ---
 

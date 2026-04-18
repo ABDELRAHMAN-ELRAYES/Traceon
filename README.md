@@ -300,7 +300,7 @@ Extends the analyzer to support **real-time packet ingestion** over TCP using st
 ```
  ┌─────────────┬────────────────────────────────────────┐
  │  4 bytes    │  N bytes                               │
- │  uint32_t   │  RawPacket (JSON or binary)            │
+ │ std::uint32_t   │  RawPacket (JSON or binary)            │
  │  (N, LE)    │                                        │
  └─────────────┴────────────────────────────────────────┘
 ```
