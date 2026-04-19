@@ -1,6 +1,7 @@
 #ifndef TLP_H
 #define TLP_H
 
+#include "analyzer-engine/core/packet/packet.h"
 #include "analyzer-engine/decoder/decode_error.h"
 #include <cstdint>
 #include <optional>
@@ -37,12 +38,18 @@ private:
 
   bool is_malformed_{};
   std::uint64_t index_{};
+  std::uint64_t timestamp_ns_{};
+  Direction direction_{Direction::UNKNOWN};
+  std::string raw_bytes_{};
   std::vector<DecodeError> decode_errors_{};
 
 public:
   TLP() = default;
   TLP(TlpType type, Fmt fmt, Attr attr, std::string requesterId,
       std::uint8_t tag, std::uint8_t tc, std::uint64_t index);
+  TLP(TlpType type, Fmt fmt, Attr attr, std::string requesterId,
+      std::uint8_t tag, std::uint8_t tc, std::uint64_t index,
+      std::uint64_t timestamp, Direction direction, std::string rawBytes);
 
   TlpType type() const { return type_; }
   Fmt fmt() const { return fmt_; }
@@ -58,6 +65,10 @@ public:
   std::optional<CompletionStatus> status() const { return status_; }
   bool isMalformed() const { return is_malformed_; }
   std::uint64_t index() const { return index_; }
+  std::uint64_t timestampNs() const { return timestamp_ns_; }
+  Direction direction() const { return direction_; }
+  const std::string &rawBytes() const { return raw_bytes_; }
+  Attr attr() const { return attr_; }
   const std::vector<DecodeError> &decodeErrors() const {
     return decode_errors_;
   }

@@ -134,32 +134,12 @@ The foundational, headless analysis engine. Operates entirely from the command l
 
 **Supported TLP Types:** `MRd`, `MWr`, `Cpl`, `CplD`
 
-**Decode Error Rules (DEC-001 – DEC-009):**
+**Decode Error Rules:**
+See [decoding_error_rules.md](docs/phases/phase%201/decoding_error_rules.md) for a full registry of structural decode errors detected by `PacketDecoder`.
 
-| Rule ID | Condition Detected                                             |
-| ------- | -------------------------------------------------------------- |
-| DEC-001 | Reserved `Fmt` bit pattern                                     |
-| DEC-002 | Unknown `Type` field                                           |
-| DEC-003 | Payload present when `Fmt` indicates none                      |
-| DEC-004 | Payload absent when `Fmt` requires it                          |
-| DEC-005 | `Length` field is zero                                         |
-| DEC-006 | `Length` exceeds 1024 DW (PCIe maximum)                        |
-| DEC-007 | Packet truncated — insufficient bytes for declared header size |
-| DEC-008 | Reserved `TC` value                                            |
-| DEC-009 | Address not naturally aligned to transfer size                 |
+**Protocol Validation Rules:**
+See [validation_rule_registry.md](docs/phases/phase%201/validation_rule_registry.md) for authoritative validation rules enforced by `ProtocolValidator`.
 
-**Protocol Validation Rules (VAL-001 – VAL-008):**
-
-| Rule ID | Category                | Condition Detected                                               |
-| ------- | ----------------------- | ---------------------------------------------------------------- |
-| VAL-001 | `UNEXPECTED_COMPLETION` | `CplD`/`Cpl` received with no matching outstanding `MRd`         |
-| VAL-002 | `MISSING_COMPLETION`    | `MRd` has no corresponding `CplD` at end of trace                |
-| VAL-003 | `DUPLICATE_COMPLETION`  | Second `CplD` received for an already-completed request          |
-| VAL-004 | `BYTE_COUNT_MISMATCH`   | `CplD` byte count inconsistent with request length               |
-| VAL-005 | `TAG_REUSE`             | Tag reused before previous transaction completes                 |
-| VAL-006 | `REQUESTER_ID_MISMATCH` | Completion `requester_id` does not match the outstanding request |
-| VAL-007 | `STATUS_ERROR`          | Completion status is UR (`001`) or CA (`100`)                    |
-| VAL-008 | `ADDRESS_MISALIGNMENT`  | Memory address not naturally aligned                             |
 
 **Non-Functional Requirements:**
 
@@ -590,17 +570,48 @@ Lines beginning with `#` are treated as comments and skipped. Malformed lines ar
 ```json
 {
   "schema_version": "1.0",
-  "generated_at": "2025-04-13T10:00:00Z",
-  "trace_file": "trace.csv",
+  "generated_at": "<ISO-8601 UTC timestamp>",
+  "trace_file": "<path to input trace>",
+
   "summary": {
-    "total_packets": 2,
-    "tlp_type_distribution": { "MRd": 1, "CplD": 1 },
+    "total_packets": 0,
+    "tlp_type_distribution": {
+      "MRd": 0,
+      "MWr": 0,
+      "Cpl": 0,
+      "CplD": 0
+    },
     "malformed_packet_count": 0,
     "validation_error_count": 0,
     "skipped_line_count": 0
   },
-  "malformed_packets": [],
-  "validation_errors": [],
+
+  "malformed_packets": [
+    {
+      "packet_index": 0,
+      "timestamp_ns": 0,
+      "direction": "TX",
+      "payload_hex": "",
+      "decode_errors": [
+        {
+          "rule_id": "DEC-001",
+          "field": "Fmt [31:29]",
+          "description": "Illegal Fmt value 0b110 is reserved."
+        }
+      ]
+    }
+  ],
+
+  "validation_errors": [
+    {
+      "rule_id": "VAL-002",
+      "category": "MISSING_COMPLETION",
+      "packet_index": 5,
+      "related_index": null,
+      "description": "MRd at index 5 (requester 0000:01:00.0, tag 3) has no corresponding CplD."
+    }
+  ],
+
   "packets": [
     {
       "index": 0,

@@ -13,7 +13,18 @@ TLP::TLP(TlpType type, Fmt fmt, Attr attr, std::string requesterId,
       requester_id_(std::move(requesterId)), completer_id_(std::nullopt),
       tag_(tag), tc_(tc), address_(std::nullopt), length_dw_(std::nullopt),
       byte_count_(std::nullopt), status_(std::nullopt), is_malformed_(false),
-      index_(index), decode_errors_() {}
+      index_(index), timestamp_ns_(0), direction_(Direction::UNKNOWN),
+      raw_bytes_(""), decode_errors_() {}
+
+TLP::TLP(TlpType type, Fmt fmt, Attr attr, std::string requesterId,
+         std::uint8_t tag, std::uint8_t tc, std::uint64_t index,
+         std::uint64_t timestamp, Direction direction, std::string rawBytes)
+    : type_(type), fmt_(fmt), attr_(attr),
+      requester_id_(std::move(requesterId)), completer_id_(std::nullopt),
+      tag_(tag), tc_(tc), address_(std::nullopt), length_dw_(std::nullopt),
+      byte_count_(std::nullopt), status_(std::nullopt), is_malformed_(false),
+      index_(index), timestamp_ns_(timestamp), direction_(direction),
+      raw_bytes_(std::move(rawBytes)), decode_errors_() {}
 
 void TLP::printPacketDetails() {
   using std::cout;

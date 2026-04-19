@@ -1,9 +1,9 @@
 #ifndef UTILS_NAMESPACE
 #define UTILS_NAMESPACE
 
-#include "analyzer-engine/core/packet/packet.h"
-#include "analyzer-engine/core/tlp/tlp.h"
 
+#include "analyzer-engine/core/tlp/tlp.h"
+#include "analyzer-engine/validator/validation_error.h"
 #include <cstdint>
 #include <string>
 
@@ -37,6 +37,10 @@ std::string tlpTypeToString(TlpType type);
 std::string fmtToStr(Fmt fmt);
 
 std::string completionStatusToStr(CompletionStatus status);
+
+std::string validationCategoryToStr(ValidationType type);
+
+std::string getTimestamp();
 
 } // namespace Utils
 

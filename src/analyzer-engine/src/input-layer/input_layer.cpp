@@ -15,26 +15,18 @@ TraceInputLayer::TraceInputLayer(const std::filesystem::path &path)
     throw TraceInputException("Failed to open trace file");
   }
 }
-/**
- * @brief Checks if the file is completely read
- *
- * @return true if the file is completely read
- * @return false
- */
+
 bool TraceInputLayer::isExhausted() { return file_.eof(); }
 
-/**
- * @brief Read the file line by line and Form the Raw Packet
- *
- * @return std::optional<Packet>
- */
+
 std::optional<Packet> TraceInputLayer::next() {
   std::string line{};
   std::getline(file_, line);
 
-  // Ignore Empty / Comments lines
-  if ((!line.empty() && line[0] == '#') || line.empty())
+  if ((!line.empty() && line[0] == '#') || line.empty()) {
+    skipped_line_count_++;
     return std::nullopt;
+  }
   std::stringstream lineStream{};
   lineStream << line;
 
@@ -46,12 +38,15 @@ std::optional<Packet> TraceInputLayer::next() {
       cols.push_back(word);
   }
 
-  if (cols.size() != 3)
+  if (cols.size() != 3) {
+    skipped_line_count_++;
     return std::nullopt;
+  }
 
-  // Ignore the csv cols declaration
-  if (cols[0] == "timestamp")
+  if (cols[0] == "timestamp") {
+    skipped_line_count_++;
     return std::nullopt;
+  }
 
   std::uint64_t timestamp{std::stoull(cols[0])};
   std::string directionStr{cols[1]}, rawBytes{cols[2]};

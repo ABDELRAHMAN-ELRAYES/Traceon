@@ -1,5 +1,8 @@
 #include "analyzer-engine/utils/utils.h"
 #include <algorithm>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
 
 namespace Utils {
 Direction stringToDirection(const std::string &strDirection) {
@@ -85,4 +88,36 @@ std::string completionStatusToStr(CompletionStatus status) {
     return "Unknown";
   }
 }
+
+std::string validationCategoryToStr(ValidationType type) {
+  switch (type) {
+  case ValidationType::UNEXPECTED_COMPLETION:
+    return "UNEXPECTED_COMPLETION";
+  case ValidationType::MISSING_COMPLETION:
+    return "MISSING_COMPLETION";
+  case ValidationType::DUPLICATE_COMPLETION:
+    return "DUPLICATE_COMPLETION";
+  case ValidationType::BYTE_COUNT_MISMATCH:
+    return "BYTE_COUNT_MISMATCH";
+  case ValidationType::ADDRESS_MISALIGNMENT:
+    return "ADDRESS_MISALIGNMENT";
+  case ValidationType::TAG_COLLISION:
+    return "TAG_COLLISION";
+  case ValidationType::INVALID_FIELD_VALUE:
+    return "INVALID_FIELD_VALUE";
+  default:
+    return "UNKNOWN";
+  }
+}
+
+std::string getTimestamp() {
+  auto now = std::chrono::system_clock::now();
+  auto it = std::chrono::system_clock::to_time_t(now);
+  struct tm gmt;
+  gmtime_r(&it, &gmt);
+  std::ostringstream oss;
+  oss << std::put_time(&gmt, "%Y-%m-%dT%H:%M:%SZ");
+  return oss.str();
+}
+
 } // namespace Utils

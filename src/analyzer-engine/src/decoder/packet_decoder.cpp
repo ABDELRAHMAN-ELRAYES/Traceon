@@ -93,9 +93,9 @@ TLP PacketDecoder::decode(const Packet &packet) {
   // The Number of Digits of the raw bytes
   std::size_t rawBytesSize = hexaRawBytes.size();
 
-  // Create a TLP instance
-  TLP tlp{};
-  tlp.index_ = packet.index();
+  // Create a TLP instance with metadata
+  TLP tlp{TlpType::UNKNOWN, Fmt::UNKNOWN, {false, false}, "", 0, 0, packet.index(),
+          timestamp, direction, hexaRawBytes};
 
   // [DEC-007] Check if the payload contains non-hexadecimal characters
   for (char c : hexaRawBytes) {
