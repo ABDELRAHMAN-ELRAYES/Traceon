@@ -27,6 +27,6 @@ public:
  * @return false
  */
   bool isExhausted();
-  std::uint64_t skipped_line_count() const { return skipped_line_count_; }
+  std::uint64_t skippedLineCount() const { return skipped_line_count_; }
 };
 #endif

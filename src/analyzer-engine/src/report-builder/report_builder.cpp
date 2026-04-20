@@ -1,22 +1,29 @@
 #include "analyzer-engine/report-builder/report_builder.h"
 #include "analyzer-engine/utils/utils.h"
+#include "tinyxml2/tinyxml2.h"
 #include <fstream>
 
 ReportBuilder::ReportBuilder(ReportFormat format,
                              std::filesystem::path trace_file)
     : format_(format), trace_file_(std::move(trace_file)), tlps_(), errors_() {}
 
-void ReportBuilder::add_tlp(const TLP &tlp) { tlps_.push_back(tlp); }
+void ReportBuilder::addTLP(const TLP &tlp) { tlps_.push_back(tlp); }
 
-void ReportBuilder::add_validation_error(const ValidationError &error) {
+void ReportBuilder::addValidationError(const ValidationError &error) {
   errors_.push_back(error);
 }
 
 void ReportBuilder::write(const std::filesystem::path &output_path,
                           std::uint64_t skipped_line_count) const {
-  if (format_ != ReportFormat::JSON) {
-    return;
+  if (format_ == ReportFormat::JSON) {
+    writeJson(output_path, skipped_line_count);
+  } else if (format_ == ReportFormat::XML) {
+    writeXml(output_path, skipped_line_count);
   }
+}
+
+void ReportBuilder::writeJson(const std::filesystem::path &output_path,
+                              std::uint64_t skipped_line_count) const {
 
   json report;
   report["schema_version"] = "1.0";
@@ -151,7 +158,151 @@ void ReportBuilder::write(const std::filesystem::path &output_path,
       report["packets"].push_back(p);
     }
   }
-  
+
   std::ofstream out(output_path);
   out << report.dump(2);
+}
+
+using namespace tinyxml2;
+
+void ReportBuilder::writeXml(const std::filesystem::path &output_path,
+                             std::uint64_t skipped_line_count) const {
+  XMLDocument doc;
+
+  // Root
+  XMLElement *report = doc.NewElement("report");
+  doc.InsertFirstChild(report);
+
+  report->InsertNewChildElement("schema_version")->SetText("1.0");
+  report->InsertNewChildElement("generated_at")
+      ->SetText(Utils::getTimestamp().c_str());
+  report->InsertNewChildElement("trace_file")
+      ->SetText(trace_file_.string().c_str());
+
+  // Summary
+  XMLElement *summary = doc.NewElement("summary");
+
+  summary->InsertNewChildElement("total_packets")->SetText((int)tlps_.size());
+  summary->InsertNewChildElement("validation_error_count")
+      ->SetText((int)errors_.size());
+  summary->InsertNewChildElement("skipped_line_count")
+      ->SetText((int)skipped_line_count);
+
+  int malformed_count = 0;
+
+  XMLElement *distribution = doc.NewElement("tlp_type_distribution");
+  std::map<std::string, int> dist = {
+      {"MRd", 0}, {"MWr", 0}, {"Cpl", 0}, {"CplD", 0}};
+
+  for (const auto &tlp : tlps_) {
+    if (tlp.isMalformed()) {
+      malformed_count++;
+    } else {
+      std::string type = Utils::tlpTypeToString(tlp.type());
+      dist[type]++;
+    }
+  }
+
+  for (auto &[k, v] : dist) {
+    XMLElement *e = doc.NewElement(k.c_str());
+    e->SetText(v);
+    distribution->InsertEndChild(e);
+  }
+
+  summary->InsertEndChild(distribution);
+  summary->InsertNewChildElement("malformed_packet_count")
+      ->SetText(malformed_count);
+
+  report->InsertEndChild(summary);
+
+  // Malformed Packets
+  XMLElement *malformed_packets = doc.NewElement("malformed_packets");
+
+  for (const auto &tlp : tlps_) {
+    if (!tlp.isMalformed())
+      continue;
+
+    XMLElement *m = doc.NewElement("packet");
+
+    m->InsertNewChildElement("packet_index")->SetText(tlp.index());
+    m->InsertNewChildElement("timestamp_ns")->SetText(tlp.timestampNs());
+    m->InsertNewChildElement("direction")
+        ->SetText(tlp.direction() == Direction::TX ? "TX" : "RX");
+    m->InsertNewChildElement("payload_hex")->SetText(tlp.rawBytes().c_str());
+
+    XMLElement *decode_errors = doc.NewElement("decode_errors");
+
+    for (const auto &err : tlp.decodeErrors()) {
+      XMLElement *de = doc.NewElement("error");
+
+      de->InsertNewChildElement("rule_id")->SetText(err.rule_id.c_str());
+      de->InsertNewChildElement("field")->SetText(err.field.c_str());
+      de->InsertNewChildElement("description")
+          ->SetText(err.description.c_str());
+
+      decode_errors->InsertEndChild(de);
+    }
+
+    m->InsertEndChild(decode_errors);
+    malformed_packets->InsertEndChild(m);
+  }
+
+  report->InsertEndChild(malformed_packets);
+
+  // Validation Errors
+  XMLElement *validation_errors = doc.NewElement("validation_errors");
+
+  for (const auto &err : errors_) {
+    XMLElement *e = doc.NewElement("error");
+
+    e->InsertNewChildElement("rule_id")->SetText(err.rule_id.c_str());
+    e->InsertNewChildElement("category")
+        ->SetText(Utils::validationCategoryToStr(err.category).c_str());
+    e->InsertNewChildElement("packet_index")->SetText(err.packet_index);
+
+    if (err.related_index.has_value()) {
+      e->InsertNewChildElement("related_index")->SetText(*err.related_index);
+    }
+
+    e->InsertNewChildElement("description")->SetText(err.description.c_str());
+
+    validation_errors->InsertEndChild(e);
+  }
+
+  report->InsertEndChild(validation_errors);
+
+  // Packets
+  XMLElement *packets = doc.NewElement("packets");
+
+  for (const auto &tlp : tlps_) {
+    if (tlp.isMalformed())
+      continue;
+
+    XMLElement *p = doc.NewElement("packet");
+
+    p->InsertNewChildElement("index")->SetText(tlp.index());
+    p->InsertNewChildElement("timestamp_ns")->SetText(tlp.timestampNs());
+    p->InsertNewChildElement("direction")
+        ->SetText(tlp.direction() == Direction::TX ? "TX" : "RX");
+
+    XMLElement *t = doc.NewElement("tlp");
+
+    t->InsertNewChildElement("type")->SetText(
+        Utils::tlpTypeToString(tlp.type()).c_str());
+
+    t->InsertNewChildElement("tag")->SetText(tlp.tag());
+
+    if (tlp.address().has_value()) {
+      std::ostringstream oss;
+      oss << "0x" << std::hex << *tlp.address();
+      t->InsertNewChildElement("address")->SetText(oss.str().c_str());
+    }
+
+    p->InsertEndChild(t);
+    packets->InsertEndChild(p);
+  }
+
+  report->InsertEndChild(packets);
+
+  doc.SaveFile(output_path.string().c_str());
 }

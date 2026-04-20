@@ -16,6 +16,11 @@ private:
   std::filesystem::path trace_file_;
   std::vector<TLP> tlps_;
   std::vector<ValidationError> errors_;
+
+  void writeJson(const std::filesystem::path &output_path,
+                 std::uint64_t skipped_line_count) const;
+  void writeXml(const std::filesystem::path &output_path,
+                std::uint64_t skipped_line_count) const;
 public:
   explicit ReportBuilder(ReportFormat format, std::filesystem::path trace_file);
 
@@ -24,13 +29,13 @@ public:
    * @brief Registers a decoded TLP in the report.
    * @param tlp The TLP to register.
    */
-  void add_tlp(const TLP &tlp);
+  void addTLP(const TLP &tlp);
 
   /**
    * @brief Registers a validation error in the report.
    * @param error The validation error to register.
    */
-  void add_validation_error(const ValidationError &error);
+  void addValidationError(const ValidationError &error);
 
   /**
    * @brief Writes the complete report to the specified output path.

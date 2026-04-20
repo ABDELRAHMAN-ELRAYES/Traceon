@@ -10,12 +10,12 @@
 #include <vector>
 
 const std::string TRACE_FILE_PATH = "../data/trace_data.csv";
-const std::filesystem::path REPORT_PATH = "../data/report.json";
+const std::filesystem::path REPORT_PATH = "../data/report.xml";
 int main() {
   std::filesystem::path path{TRACE_FILE_PATH};
   TraceInputLayer inputLayer{path};
   ProtocolValidator validator;
-  ReportBuilder reportBuilder(ReportFormat::JSON, path);
+  ReportBuilder reportBuilder(ReportFormat::XML, path);
 
   std::vector<Packet> packets{};
   // Read the Raw Packets
@@ -30,7 +30,7 @@ int main() {
     TLP tlp = PacketDecoder::decode(packet);
     tlp.printPacketDetails();
     validator.process(tlp);
-    reportBuilder.add_tlp(tlp);
+    reportBuilder.addTLP(tlp);
     std::cout << "=========================\n";
   }
 
@@ -38,7 +38,7 @@ int main() {
   auto errors = validator.finalize();
 
   for (const auto &err : errors) {
-    reportBuilder.add_validation_error(err);
+    reportBuilder.addValidationError(err);
   }
 
   if (errors.empty()) {
@@ -53,7 +53,7 @@ int main() {
   }
 
   std::cout << "\n[ Generating Report ]\n";
-  reportBuilder.write(REPORT_PATH, inputLayer.skipped_line_count());
+  reportBuilder.write(REPORT_PATH, inputLayer.skippedLineCount());
   std::cout << "Report generated at: " << REPORT_PATH << "\n";
 
   return 0;
