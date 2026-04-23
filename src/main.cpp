@@ -1,12 +1,28 @@
-#include "analyzer-engine/analyzer_engine.h"
-#include "analyzer-engine/report-builder/report_builder.h"
-#include <filesystem>
+#include <analyzer-engine/analyzer_engine.h>
+#include <analyzer-engine/input-layer/input_exception.h>
+#include <cli-parser/cli_parser.h>
+#include <iostream>
 
-const std::filesystem::path TRACE_FILE_PATH = "../data/trace_data.csv";
-const std::filesystem::path REPORT_PATH = "../data/report.json";
-int main() {
+int main(int argc, char *argv[]) {
+  std::optional<CLIConfig> config_opt = CLIParser::parse(argc, argv);
+  if (!config_opt) {
+    std::cout << "\nRun with --help for usage information.\n";
+    return 3;
+  }
 
-  AnalyzerEngine analyzer{TRACE_FILE_PATH, REPORT_PATH, ReportFormat::JSON};
-  analyzer.run();
+  const auto &config = *config_opt;
+
+  try {
+    AnalyzerEngine analyzer{config.input_path, config.output_path,
+                            config.format, config.verbose};
+    analyzer.run();
+  } catch (const TraceInputException &e) {
+    std::cout << "[FATAL] Trace Input Failure: " << e.what() << "\n";
+    return 1;
+  } catch (const std::exception &e) {
+    std::cout << "[FATAL] Execution Failure: " << e.what() << "\n";
+    return 1;
+  }
+
   return 0;
 }

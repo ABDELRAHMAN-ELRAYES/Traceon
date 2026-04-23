@@ -8,11 +8,12 @@ private:
   std::filesystem::path trace_path_;
   std::filesystem::path report_path_;
   ReportFormat report_format_;
+  bool verbose_;
 
 public:
   explicit AnalyzerEngine(std::filesystem::path trace_path,
                           std::filesystem::path report_path,
-                          ReportFormat report_format);
+                          ReportFormat report_format, bool verbose = false);
 
   void run();
 };

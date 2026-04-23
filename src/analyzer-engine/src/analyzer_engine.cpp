@@ -10,9 +10,9 @@
 
 AnalyzerEngine::AnalyzerEngine(std::filesystem::path trace_path,
                                std::filesystem::path report_path,
-                               ReportFormat report_format)
+                               ReportFormat report_format, bool verbose)
     : trace_path_(std::move(trace_path)), report_path_(std::move(report_path)),
-      report_format_(report_format) {}
+      report_format_(report_format), verbose_(verbose) {}
 
 void AnalyzerEngine::run() {
   TraceInputLayer inputLayer{trace_path_};
@@ -30,13 +30,19 @@ void AnalyzerEngine::run() {
 
   for (const auto &packet : packets) {
     TLP tlp = PacketDecoder::decode(packet);
-    tlp.printPacketDetails();
+    if (verbose_) {
+      tlp.printPacketDetails();
+    }
     validator.process(tlp);
     reportBuilder.addTLP(tlp);
-    std::cout << "=========================\n";
+    if (verbose_) {
+      std::cout << "=========================\n";
+    }
   }
 
-  std::cout << "\n[ Finalizing Protocol Validation ]\n";
+  if (verbose_) {
+    std::cout << "\n[ Finalizing Protocol Validation ]\n";
+  }
   auto errors = validator.finalize();
 
   for (const auto &err : errors) {
@@ -48,13 +54,17 @@ void AnalyzerEngine::run() {
   } else {
     std::cout << "WARNING: " << errors.size()
               << " protocol violation(s) found:\n";
-    for (const auto &err : errors) {
-      std::cout << "  - [" << err.rule_id << "] " << err.description
-                << " (Packet Index: " << err.packet_index << ")\n";
+    if (verbose_) {
+      for (const auto &err : errors) {
+        std::cout << "  - [" << err.rule_id << "] " << err.description
+                  << " (Packet Index: " << err.packet_index << ")\n";
+      }
     }
   }
 
-  std::cout << "\n[ Generating Report ]\n";
+  if (verbose_) {
+    std::cout << "\n[ Generating Report ]\n";
+  }
   reportBuilder.write(report_path_, inputLayer.skippedLineCount());
   std::cout << "Report generated at: " << report_path_ << "\n";
 }

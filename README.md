@@ -140,7 +140,6 @@ See [decoding_error_rules.md](docs/phases/phase%201/decoding_error_rules.md) for
 **Protocol Validation Rules:**
 See [validation_rule_registry.md](docs/phases/phase%201/validation_rule_registry.md) for authoritative validation rules enforced by `ProtocolValidator`.
 
-
 **Non-Functional Requirements:**
 
 - Single-threaded correctness is established before concurrency is introduced (Phase 4).
@@ -716,21 +715,33 @@ python scripting/python/tools/update_baselines.py \
 ```
 Traceon/
 ├── src/
-│   ├── backend/                 # Core analysis engine (Phase 1)
-│   │   ├── include/backend/     # Namespaced public headers
+│   ├── analyzer-engine/         # Core analysis engine (Phase 1)
+│   │   ├── CMakeLists.txt
+│   │   ├── tests/
+│   │   │   ├── unit/                    # Per-component unit tests
+│   │   │   └── system/                  # End-to-end trace tests
+│   │   ├── include/analyzer-engine/     # Namespaced public headers
 │   │   │   ├── core/            # Packet and TLP definitions
 │   │   │   └── decoder/         # Protocol decoding logic
 │   │   └── src/                 # Implementation files
+│   ├── cli-parser/              # Phase 1 — CLI parser
+│   │   ├── CMakeLists.txt
+│   │   ├── include/cli-parser/     # Namespaced public headers
+│   │   ├── tests/
+│   │   │   ├── unit/                    # Per-component unit tests
+│   │   │   └── system/                  # End-to-end trace tests
+│   │   └── src/                 # Implementation files
 │   ├── gui/                     # Phase 2 — Visualization
+│   │   ├── CMakeLists.txt
 │   │   ├── include/gui/
+│   │   ├── tests/
+│   │   │   ├── unit/                    # Per-component unit tests
+│   │   │   └── system/                  # End-to-end trace tests
 │   │   └── src/
 │   ├── main.cpp                 # Application entry point
 │   └── CMakeLists.txt
 ├── docs/
 │   └── notes/                   # Phase specifications and notes
-├── tests/
-│   ├── unit/                    # Per-component unit tests
-│   └── system/                  # End-to-end trace tests
 ├── data/                        # Sample trace files and logs
 ├── scripts/                     # Automation and helper scripts
 ├── CMakeLists.txt               # Root project configuration
