@@ -30,7 +30,7 @@ TEST_F(InputLayerTest, EmptyFile) {
     auto packet = input.next();
     EXPECT_FALSE(packet.has_value());
     EXPECT_TRUE(input.isExhausted());
-    EXPECT_EQ(input.skippedLineCount(), 1);
+    EXPECT_EQ(input.skippedLineCount(), 0);
 }
 
 TEST_F(InputLayerTest, CommentOnlyFile) {
@@ -44,7 +44,7 @@ TEST_F(InputLayerTest, CommentOnlyFile) {
     }
     
     EXPECT_TRUE(input.isExhausted());
-    EXPECT_GT(input.skippedLineCount(), 0);
+    EXPECT_EQ(input.skippedLineCount(), 0);
 }
 
 TEST_F(InputLayerTest, MixedValidAndMalformedLines) {

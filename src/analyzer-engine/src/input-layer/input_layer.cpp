@@ -23,8 +23,8 @@ std::optional<Packet> TraceInputLayer::next() {
   std::string line{};
   std::getline(file_, line);
 
-  if ((!line.empty() && line[0] == '#') || line.empty()) {
-    skipped_line_count_++;
+  size_t first_non_ws = line.find_first_not_of(" \t\r\n");
+  if (first_non_ws == std::string::npos || line[first_non_ws] == '#') {
     return std::nullopt;
   }
   std::stringstream lineStream{};

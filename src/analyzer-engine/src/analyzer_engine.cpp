@@ -33,7 +33,9 @@ void AnalyzerEngine::run() {
     if (verbose_) {
       tlp.printPacketDetails();
     }
-    validator.process(tlp);
+    if (!tlp.isMalformed()) {
+      validator.process(tlp);
+    }
     reportBuilder.addTLP(tlp);
     if (verbose_) {
       std::cout << "=========================\n";

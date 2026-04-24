@@ -27,6 +27,20 @@ target_link_libraries(
   tinyxml2
 )
 
+add_executable(
+  analyzer_engine_system_tests
+  system/test_analyzer_engine.cpp
+)
+
+target_link_libraries(
+  analyzer_engine_system_tests
+  PRIVATE
+  analyzer_engine_lib
+  GTest::gtest_main
+  tinyxml2
+)
+
 # GTest Discover
 include(GoogleTest)
 gtest_discover_tests(analyzer_engine_unit_tests)
+gtest_discover_tests(analyzer_engine_system_tests)
