@@ -16,3 +16,7 @@ target_include_directories(analyzer_engine_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR
 
 # Add third-party to the include path
 target_include_directories(analyzer_engine_lib PUBLIC ${CMAKE_SOURCE_DIR}/third-party/libs)
+
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
