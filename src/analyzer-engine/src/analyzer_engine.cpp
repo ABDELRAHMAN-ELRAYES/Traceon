@@ -17,47 +17,43 @@ AnalyzerEngine::AnalyzerEngine(std::filesystem::path trace_path,
 void AnalyzerEngine::run() {
   TraceInputLayer inputLayer{trace_path_};
   ProtocolValidator validator;
-  ReportBuilder reportBuilder(report_format_, trace_path_);
+  ReportBuilder reportBuilder(report_format_, trace_path_, report_path_);
 
-  std::vector<Packet> packets{};
-  // Read the Raw Packets
+  // Process packets in a single pass streaming manner
   while (!inputLayer.isExhausted()) {
     std::optional<Packet> packetopt = inputLayer.next();
     if (packetopt.has_value()) {
-      packets.push_back(packetopt.value());
-    }
-  }
-
-  for (const auto &packet : packets) {
-    TLP tlp = PacketDecoder::decode(packet);
-    if (verbose_) {
-      tlp.printPacketDetails();
-    }
-    if (!tlp.isMalformed()) {
-      validator.process(tlp);
-    }
-    reportBuilder.addTLP(tlp);
-    if (verbose_) {
-      std::cout << "=========================\n";
+      Packet &packet = packetopt.value();
+      TLP tlp = PacketDecoder::decode(packet);
+      if (verbose_) {
+        tlp.printPacketDetails();
+      }
+      std::vector<ValidationError> validation_errors;
+      if (!tlp.isMalformed()) {
+        validation_errors = validator.process(tlp);
+      }
+      reportBuilder.addTLP(tlp, validation_errors);
+      if (verbose_) {
+        std::cout << "=========================\n";
+      }
     }
   }
 
   if (verbose_) {
     std::cout << "\n[ Finalizing Protocol Validation ]\n";
   }
-  auto errors = validator.finalize();
+  auto late_errors = validator.finalize();
 
-  for (const auto &err : errors) {
+  for (const auto &err : late_errors) {
     reportBuilder.addValidationError(err);
   }
 
-  if (errors.empty()) {
-    std::cout << "SUCCESS: No protocol violations found.\n";
-  } else {
-    std::cout << "WARNING: " << errors.size()
-              << " protocol violation(s) found:\n";
+  if (!late_errors.empty()) {
+    std::cout << "WARNING: " << late_errors.size()
+              << " late protocol violation(s) found (e.g. missing "
+                 "completions):\n";
     if (verbose_) {
-      for (const auto &err : errors) {
+      for (const auto &err : late_errors) {
         std::cout << "  - [" << err.rule_id << "] " << err.description
                   << " (Packet Index: " << err.packet_index << ")\n";
       }

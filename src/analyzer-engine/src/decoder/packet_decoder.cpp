@@ -1,25 +1,28 @@
 #include "analyzer-engine/decoder/packet_decoder.h"
 #include "analyzer-engine/core/packet/packet.h"
 #include "analyzer-engine/utils/utils.h"
-#include <iomanip>
-#include <sstream>
+#include <cstdio>
+#include <vector>
 
 // parsePacketDws: Divide the packet raw hexa into double words
 std::vector<std::uint32_t>
 PacketDecoder::parsePacketDws(const std::string &hexaRawBytes) {
-  std::vector<std::uint32_t> dws{};
+  std::vector<std::uint32_t> dws;
+  dws.reserve(hexaRawBytes.size() / DW_HEXA_DIGITS_NUMBER);
 
-  std::size_t rawBytesSize = hexaRawBytes.size();
-  std::size_t i = 0;
-
-  while (i < rawBytesSize) {
-    // Divide the raw bytes by the double word size(4Bytes => 8 Hexa Digits)
-    std::string dw = hexaRawBytes.substr(i, DW_HEXA_DIGITS_NUMBER);
-
-    // convert the extracted hexa dw
-    dws.push_back(static_cast<std::uint32_t>(std::stoul(dw, nullptr, 16)));
-
-    i += DW_HEXA_DIGITS_NUMBER;
+  for (size_t i = 0; i < hexaRawBytes.size(); i += DW_HEXA_DIGITS_NUMBER) {
+    uint32_t val = 0;
+    for (size_t j = 0; j < DW_HEXA_DIGITS_NUMBER; ++j) {
+      char c = hexaRawBytes[i + j];
+      val <<= 4;
+      if (c >= '0' && c <= '9')
+        val |= (c - '0');
+      else if (c >= 'a' && c <= 'f')
+        val |= (c - 'a' + 10);
+      else if (c >= 'A' && c <= 'F')
+        val |= (c - 'A' + 10);
+    }
+    dws.push_back(val);
   }
   return dws;
 }
@@ -59,29 +62,10 @@ PacketDecoder::translatePacketCompletionStatus(std::uint8_t rawStatus) {
 }
 
 std::string PacketDecoder::translateBdfId(std::uint16_t rawId) {
-  // Extract the bus, device, function ->> (8, 5, 3) bits
-  std::uint8_t bus = (rawId >> 8) & 0xFF;
-  std::uint8_t device = (rawId >> 3) & 0x1F;
-  std::uint8_t function = rawId & 0x07;
-
-  // Store the Translated ID
-  std::ostringstream id{};
-
-  // Set the number base for the input numbers to Hexadecimal
-  id << std::hex << std::setfill('0');
-
-  // Domain (always 0000)
-  id << "0000:";
-
-  id << std::setw(2) << static_cast<unsigned int>(bus);
-  id << ':';
-
-  id << std::setw(2) << static_cast<unsigned int>(device);
-  id << '.';
-
-  id << std::setw(1) << static_cast<unsigned int>(function);
-
-  return id.str();
+  char buf[20];
+  std::snprintf(buf, sizeof(buf), "0000:%02x:%02x.%x", (rawId >> 8) & 0xFF,
+                (rawId >> 3) & 0x1F, rawId & 0x07);
+  return std::string(buf);
 }
 
 TLP PacketDecoder::decode(const Packet &packet) {
@@ -94,8 +78,8 @@ TLP PacketDecoder::decode(const Packet &packet) {
   std::size_t rawBytesSize = hexaRawBytes.size();
 
   // Create a TLP instance with metadata
-  TLP tlp{TlpType::UNKNOWN, Fmt::UNKNOWN, {false, false}, "", 0, 0, packet.index(),
-          timestamp, direction, hexaRawBytes};
+  TLP tlp{TlpType::UNKNOWN, Fmt::UNKNOWN, {false, false}, "",          0, 0,
+          packet.index(),   timestamp,    direction,      hexaRawBytes};
 
   // [DEC-007] Check if the payload contains non-hexadecimal characters
   for (char c : hexaRawBytes) {
@@ -254,8 +238,7 @@ TLP PacketDecoder::decode(const Packet &packet) {
   std::uint64_t address{};
 
   bool isRequest = (tlp.type_ == TlpType::MRd || tlp.type_ == TlpType::MWr);
-  bool isCompletion =
-      (tlp.type_ == TlpType::Cpl || tlp.type_ == TlpType::CplD);
+  bool isCompletion = (tlp.type_ == TlpType::Cpl || tlp.type_ == TlpType::CplD);
 
   if (isRequest) {
     // Translate Requester Id into BDF string format [Bus]:[Device]:[Function]

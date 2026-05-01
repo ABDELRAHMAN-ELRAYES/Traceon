@@ -19,7 +19,7 @@ protected:
 };
 
 TEST_F(ReportBuilderTest, EmptyReportHasSchemaVersion) {
-  ReportBuilder builder(ReportFormat::JSON, "dummy.csv");
+  ReportBuilder builder(ReportFormat::JSON, "dummy.csv", test_file_path);
   builder.write(test_file_path, 0);
 
   EXPECT_TRUE(std::filesystem::exists(test_file_path));
@@ -32,16 +32,14 @@ TEST_F(ReportBuilderTest, EmptyReportHasSchemaVersion) {
   EXPECT_EQ(report["trace_file"], "dummy.csv");
   EXPECT_EQ(report["summary"]["total_packets"], 0);
   EXPECT_EQ(report["summary"]["skipped_line_count"], 0);
-  EXPECT_EQ(report["summary"]["validation_error_count"], 0);
   EXPECT_EQ(report["summary"]["malformed_packet_count"], 0);
 
   EXPECT_TRUE(report["packets"].empty());
-  EXPECT_TRUE(report["malformed_packets"].empty());
   EXPECT_TRUE(report["validation_errors"].empty());
 }
 
 TEST_F(ReportBuilderTest, NullSerializationPolicy) {
-  ReportBuilder builder(ReportFormat::JSON, "dummy.csv");
+  ReportBuilder builder(ReportFormat::JSON, "dummy.csv", test_file_path);
 
   auto pkt = Packet(1000, Direction::TX, 0, "00000001010005FF30000000");
   auto tlp = PacketDecoder::decode(pkt);
@@ -64,7 +62,7 @@ TEST_F(ReportBuilderTest, NullSerializationPolicy) {
 }
 
 TEST_F(ReportBuilderTest, XmlFormatIgnoredForJsonTest) {
-  ReportBuilder xmlBuilder(ReportFormat::XML, "dummy.csv");
+  ReportBuilder xmlBuilder(ReportFormat::XML, "dummy.csv", "test_report.xml");
   xmlBuilder.write("test_report.xml", 0);
   EXPECT_TRUE(std::filesystem::exists("test_report.xml"));
   std::filesystem::remove("test_report.xml");

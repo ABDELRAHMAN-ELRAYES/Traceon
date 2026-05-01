@@ -196,20 +196,42 @@ Phase 1 is self-contained and must remain permanently operational regardless of 
 
 The Phase 1 system is organized into four strictly isolated, vertically stacked processing layers. Data flows in one direction only — from the top layer downward. No layer has any visibility into the internal implementation details of any layer other than the one immediately above it, and all inter-layer communication occurs exclusively through the data structures defined in Section 8.
 
-```
-┌──────────────────────────────────────────────────────┐
-│                 Trace Input Layer                    │
-│  Reads files, constructs and emits RawPacket objects │
-├──────────────────────────────────────────────────────┤
-│               Packet Decode Layer                    │
-│  Transforms each RawPacket into a typed TLP object   │
-├──────────────────────────────────────────────────────┤
-│             Protocol Validation Layer                │
-│  Applies stateful transaction rules over TLP stream  │
-├──────────────────────────────────────────────────────┤
-│                 Reporting Layer                      │
-│  Aggregates all results and serializes the report    │
-└──────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    CLI["CLI"]
+
+    subgraph ENGINE["AnalyzerEngine"]
+        direction TB
+        TIL["TraceInputLayer"]
+        DEC["PacketDecoder"]
+        VAL["ProtocolValidator"]
+        RPT["ReportBuilder"]
+    end
+
+    subgraph DM["Data Model"]
+        RAW["RawPacket"]
+        TLP["TLP"]
+        DE["DecodeError"]
+        VE["ValidationError"]
+    end
+
+    subgraph IO["I/O"]
+        IN["Trace File (.csv)"]
+        OUT["Analysis Report (JSON / XML)"]
+    end
+
+    CLI -->|"opens"| TIL
+    IN  -->|"line-by-line"| TIL
+    TIL -->|"RawPacket"| DEC
+    DEC -->|"TLP (all)"| RPT
+    DEC -->|"TLP (non-malformed only)"| VAL
+    VAL -->|"ValidationError[]"| RPT
+    RPT -->|"writes"| OUT
+
+    RAW -.->|"input contract"| DEC
+    DEC -.->|"produces"| TLP
+    TLP -.->|"carries"| DE
+    VAL -.->|"produces"| VE
 ```
 
 ### 6.2 Inter-Layer Communication Contracts
@@ -419,13 +441,58 @@ The analysis report is a hierarchically structured document containing the follo
 
 **`summary`** — An aggregated statistics object containing the total packet count, per-type TLP distribution map, total malformed packet count, total validation error count, and skipped line count.
 
-**`malformed_packets`** — An ordered array of objects, one per packet that triggered at least one decode error. Each object carries the `packet_index`, `timestamp_ns`, `direction`, `payload_hex`, and a `decode_errors` array detailing each specific structural violation.
+**`packets`** — An ordered array containing one record per ingested packet in original trace order. Each record contains:
+- `index`: Packet number.
+- `timestamp_ns`: Capture timestamp.
+- `direction`: "TX" or "RX".
+- `is_malformed`: Boolean flag.
+- `decode_errors`: (Present if malformed) Array of structural error objects.
+- `tlp`: (Present if NOT malformed) Object containing all extracted header fields.
+- `validation_errors`: Array of protocol violation objects detected specifically for this packet.
 
-**`validation_errors`** — An ordered array of `ValidationError` records, one per detected protocol violation. Ordering reflects the order in which violations were produced during processing.
+**`validation_errors`** — An ordered array of `ValidationError` records for **global** or **late** violations that cannot be uniquely associated with a single packet entry at the time of processing (e.g., missing completions detected at the end of the trace).
 
-**`packets`** — An ordered array containing one record per ingested packet in original trace order. Each record contains the packet's `index`, `timestamp_ns`, `direction`, `is_malformed` flag, and a `tlp` sub-object with all extracted header fields.
+### 12.2 Structure Example (JSON)
 
-### 12.2 Field Null Serialization Policy
+```json
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-04-26T17:15:30Z",
+  "trace_file": "example.csv",
+  "packets": [
+    {
+      "index": 12,
+      "timestamp_ns": 1500,
+      "direction": "TX",
+      "is_malformed": false,
+      "tlp": {
+        "type": "MRd",
+        "tag": 5,
+        "address": "0x1000",
+        "length_dw": 1
+      },
+      "validation_errors": [
+        {
+          "rule_id": "VAL-005",
+          "category": "ADDRESS_MISALIGNMENT",
+          "description": "Address 0x1000 is not naturally aligned."
+        }
+      ]
+    }
+  ],
+  "validation_errors": [
+    {
+      "rule_id": "VAL-002",
+      "category": "MISSING_COMPLETION",
+      "packet_index": 12,
+      "description": "MRd (tag 5) never received a completion."
+    }
+  ],
+  "summary": { ... }
+}
+```
+
+### 12.3 Field Null Serialization Policy
 
 Fields that are structurally inapplicable for a given TLP type must appear in the output as JSON `null` or the XML equivalent. Inapplicable fields must never be omitted from the output. This policy ensures that the report schema is uniform across all TLP types and that consumers can always rely on the presence of every field name.
 

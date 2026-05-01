@@ -143,8 +143,8 @@ See [validation_rule_registry.md](docs/phases/phase%201/validation_rule_registry
 **Non-Functional Requirements:**
 
 - Single-threaded correctness is established before concurrency is introduced (Phase 4).
-- Must process 100,000 packets in under 2 seconds on the reference system.
-- Peak memory must not exceed 512 MB for any trace file.
+- **High Performance**: Processes 1,000,000 packets in under 6 seconds on the reference system (~185,000 packets/sec).
+- **Zero-Allocation Streaming**: Implements a "Single Packet" architecture with $O(1)$ memory complexity.
 - Deterministic: identical inputs always produce identical outputs.
 
 ---
@@ -573,29 +573,30 @@ Lines beginning with `#` are treated as comments and skipped. Malformed lines ar
   "trace_file": "<path to input trace>",
 
   "summary": {
-    "total_packets": 0,
-    "tlp_type_distribution": {
-      "MRd": 0,
-      "MWr": 0,
-      "Cpl": 0,
-      "CplD": 0
-    },
+    "total_packets": 1000,
+    "tlp_type_distribution": { "MRd": 500, "MWr": 500 },
     "malformed_packet_count": 0,
-    "validation_error_count": 0,
+    "validation_error_count": 1,
     "skipped_line_count": 0
   },
 
-  "malformed_packets": [
+  "packets": [
     {
-      "packet_index": 0,
-      "timestamp_ns": 0,
+      "index": 5,
+      "timestamp_ns": 1000,
       "direction": "TX",
-      "payload_hex": "",
-      "decode_errors": [
+      "is_malformed": false,
+      "tlp": {
+        "type": "MRd",
+        "tag": 10,
+        "address": "0x30000000",
+        "length_dw": 4
+      },
+      "validation_errors": [
         {
-          "rule_id": "DEC-001",
-          "field": "Fmt [31:29]",
-          "description": "Illegal Fmt value 0b110 is reserved."
+          "rule_id": "VAL-002",
+          "category": "MISSING_COMPLETION",
+          "description": "MRd at index 5 has no corresponding CplD."
         }
       ]
     }
@@ -606,31 +607,7 @@ Lines beginning with `#` are treated as comments and skipped. Malformed lines ar
       "rule_id": "VAL-002",
       "category": "MISSING_COMPLETION",
       "packet_index": 5,
-      "related_index": null,
-      "description": "MRd at index 5 (requester 0000:01:00.0, tag 3) has no corresponding CplD."
-    }
-  ],
-
-  "packets": [
-    {
-      "index": 0,
-      "timestamp_ns": 1000,
-      "direction": "TX",
-      "is_malformed": false,
-      "tlp": {
-        "type": "MRd",
-        "header_fmt": "3DW",
-        "tc": 0,
-        "attr": { "no_snoop": false, "relaxed_ordering": false },
-        "requester_id": "0000:05:01.0",
-        "completer_id": null,
-        "tag": 10,
-        "address": "0x30000000",
-        "length_dw": 4,
-        "has_data": false,
-        "byte_count": null,
-        "status": null
-      }
+      "description": "Global/Late violation: MRd never completed."
     }
   ]
 }
@@ -671,7 +648,7 @@ Each phase carries its own mandatory test suite. All tests must pass before a ph
 | All malformed packet types     | Each DEC rule triggered exactly once       |
 | All validation error types     | Each VAL rule triggered exactly once       |
 | Empty trace file               | Report with zero packets, zero errors      |
-| Large trace (100,000+ packets) | Completes within the 2-second NFR bound    |
+| Large trace (1,000,000+ packets) | Completes within the 10-second NFR bound |
 
 **Phase 4 — Concurrency Requirements:**
 

@@ -18,7 +18,6 @@ TraceInputLayer::TraceInputLayer(const std::filesystem::path &path)
 
 bool TraceInputLayer::isExhausted() { return file_.eof(); }
 
-
 std::optional<Packet> TraceInputLayer::next() {
   std::string line{};
   std::getline(file_, line);

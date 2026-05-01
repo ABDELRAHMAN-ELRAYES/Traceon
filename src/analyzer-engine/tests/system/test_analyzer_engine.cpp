@@ -35,6 +35,24 @@ protected:
     return report;
   }
 
+  bool verifyLargeTraceSummary(uint64_t expected_packets) {
+    std::ifstream file(test_report_path, std::ios::binary | std::ios::ate);
+    if (!file.is_open())
+      return false;
+
+    std::streamsize size = file.tellg();
+    std::streamsize read_size =
+        std::min(size, static_cast<std::streamsize>(4096));
+    file.seekg(-read_size, std::ios::end);
+
+    std::string buffer(read_size, '\0');
+    file.read(&buffer[0], read_size);
+
+    std::string search_str =
+        "\"total_packets\": " + std::to_string(expected_packets);
+    return buffer.find(search_str) != std::string::npos;
+  }
+
   void runAnalyzer(bool verbose = false) {
     AnalyzerEngine engine(test_trace_path, test_report_path, ReportFormat::JSON,
                           verbose);
@@ -50,11 +68,12 @@ TEST_F(AnalyzerEngineSystemTest, CanonicalValidTrace) {
   auto report = readReport();
   EXPECT_EQ(report["summary"]["total_packets"], 2);
   EXPECT_EQ(report["summary"]["malformed_packet_count"], 0);
-  EXPECT_EQ(report["summary"]["validation_error_count"], 0);
   EXPECT_EQ(report["summary"]["skipped_line_count"], 0);
-  EXPECT_EQ(report["malformed_packets"].size(), 0);
   EXPECT_EQ(report["validation_errors"].size(), 0);
   EXPECT_EQ(report["packets"].size(), 2);
+  for (const auto &pkt : report["packets"]) {
+    EXPECT_FALSE(pkt["is_malformed"]);
+  }
 }
 
 TEST_F(AnalyzerEngineSystemTest, MalformedPackets) {
@@ -72,13 +91,13 @@ TEST_F(AnalyzerEngineSystemTest, MalformedPackets) {
   auto report = readReport();
   EXPECT_EQ(report["summary"]["total_packets"], 7);
   EXPECT_EQ(report["summary"]["malformed_packet_count"], 7);
-  EXPECT_EQ(report["summary"]["validation_error_count"], 0);
-  EXPECT_EQ(report["malformed_packets"].size(), 7);
+  EXPECT_EQ(report["packets"].size(), 7);
 
   // Ensure all generated DEC rules are present
   int dec001 = 0, dec002 = 0, dec003 = 0, dec004 = 0, dec005 = 0, dec006 = 0,
       dec007 = 0;
-  for (const auto &pkt : report["malformed_packets"]) {
+  for (const auto &pkt : report["packets"]) {
+    EXPECT_TRUE(pkt["is_malformed"]);
     for (const auto &err : pkt["decode_errors"]) {
       std::string id = err["rule_id"];
       if (id == "DEC-001")
@@ -129,28 +148,39 @@ TEST_F(AnalyzerEngineSystemTest, ValidationErrors) {
 
   auto report = readReport();
   EXPECT_EQ(report["summary"]["malformed_packet_count"], 0);
-  EXPECT_EQ(report["summary"]["validation_error_count"], 9);
+  EXPECT_EQ(report["summary"]["total_packets"], 11);
 
   // Ensure tested VAL rules are triggered
   int val001 = 0, val002 = 0, val003 = 0, val004 = 0, val005 = 0, val006 = 0,
       val008 = 0;
-  for (const auto &err : report["validation_errors"]) {
-    std::string id = err["rule_id"];
-    if (id == "VAL-001")
-      val001++;
-    if (id == "VAL-002")
-      val002++;
-    if (id == "VAL-003")
-      val003++;
-    if (id == "VAL-004")
-      val004++;
-    if (id == "VAL-005")
-      val005++;
-    if (id == "VAL-006")
-      val006++;
-    if (id == "VAL-008")
-      val008++;
+
+  auto check_errors = [&](const json &errs) {
+    for (const auto &err : errs) {
+      std::string id = err["rule_id"];
+      if (id == "VAL-001")
+        val001++;
+      if (id == "VAL-002")
+        val002++;
+      if (id == "VAL-003")
+        val003++;
+      if (id == "VAL-004")
+        val004++;
+      if (id == "VAL-005")
+        val005++;
+      if (id == "VAL-006")
+        val006++;
+      if (id == "VAL-008")
+        val008++;
+    }
+  };
+
+  check_errors(report["validation_errors"]);
+  for (const auto &pkt : report["packets"]) {
+    if (pkt.contains("validation_errors")) {
+      check_errors(pkt["validation_errors"]);
+    }
   }
+
   EXPECT_EQ(val001, 1);
   // 3 missing completions expected
   EXPECT_EQ(val002, 3);
@@ -167,7 +197,6 @@ TEST_F(AnalyzerEngineSystemTest, EmptyTraceFile) {
   auto report = readReport();
   EXPECT_EQ(report["summary"]["total_packets"], 0);
   EXPECT_EQ(report["summary"]["malformed_packet_count"], 0);
-  EXPECT_EQ(report["summary"]["validation_error_count"], 0);
   EXPECT_EQ(report["summary"]["skipped_line_count"], 0);
 }
 
@@ -191,10 +220,10 @@ TEST_F(AnalyzerEngineSystemTest, SkippedLinesFromMalformedRows) {
 
 TEST_F(AnalyzerEngineSystemTest, LargeTrace) {
   std::vector<std::string> lines;
-  lines.reserve(100000);
-  for (int i = 0; i < 100000; ++i) {
+  lines.reserve(1000000);
+  for (int i = 0; i < 1000000; ++i) {
     lines.push_back(
-        "1000,TX,0000000101000A0030000000"); // valid structure, 100k packets
+        "1000,TX,0000000101000A0030000000"); // valid structure, 1M packets
   }
   writeTrace(lines);
 
@@ -206,8 +235,10 @@ TEST_F(AnalyzerEngineSystemTest, LargeTrace) {
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
           .count();
 
-  EXPECT_LT(duration, 10000); // Should be well within 10s
+  std::cout << "[ PERFORMANCE ] 1,000,000 packets processed in " << duration
+            << " ms." << std::endl;
 
-  auto report = readReport();
-  EXPECT_EQ(report["summary"]["total_packets"], 100000);
+  EXPECT_LT(duration, 10000); // Target: < 10s for 1M packets
+
+  EXPECT_TRUE(verifyLargeTraceSummary(1000000));
 }

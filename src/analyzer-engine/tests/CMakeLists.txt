@@ -24,7 +24,6 @@ target_link_libraries(
   PRIVATE
   analyzer_engine_lib
   GTest::gtest_main
-  tinyxml2
 )
 
 add_executable(
@@ -37,7 +36,6 @@ target_link_libraries(
   PRIVATE
   analyzer_engine_lib
   GTest::gtest_main
-  tinyxml2
 )
 
 # GTest Discover

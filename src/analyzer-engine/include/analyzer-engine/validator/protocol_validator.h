@@ -48,9 +48,6 @@ private:
   // history of completed requests to detect duplicate completions
   std::unordered_set<TransactionKey> satisfied_requests_;
 
-  // list of errors found during the validation process
-  std::vector<ValidationError> errors_;
-
 public:
   ProtocolValidator() = default;
 
@@ -58,20 +55,14 @@ public:
    * @brief Process a single TLP and check for protocol violations
    * @param tlp The TLP to process
    */
-  void process(const TLP &tlp);
+  std::vector<ValidationError> process(const TLP &tlp);
 
   /**
    * @brief Finalize the validation process by adding any errors like the
    * uncompleted requests errors and return the full final errors list
-   * @return A vector of validation errors
+   * @return A vector of validation errors found at the end
    */
   std::vector<ValidationError> finalize();
-
-  /**
-   * @brief Get the list of validation errors happened so far
-   * @return A constant reference to the vector of validation errors
-   */
-  const std::vector<ValidationError> &errors() const;
 };
 
 #endif

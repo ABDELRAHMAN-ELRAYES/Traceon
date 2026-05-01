@@ -1,308 +1,326 @@
 #include "analyzer-engine/report-builder/report_builder.h"
 #include "analyzer-engine/utils/utils.h"
-#include "tinyxml2/tinyxml2.h"
-#include <fstream>
 
 ReportBuilder::ReportBuilder(ReportFormat format,
-                             std::filesystem::path trace_file)
-    : format_(format), trace_file_(std::move(trace_file)), tlps_(), errors_() {}
+                             std::filesystem::path trace_file,
+                             std::filesystem::path output_path)
+    : format_(format), trace_file_(std::move(trace_file)),
+      output_path_(std::move(output_path)) {
+  distribution_["MRd"] = 0;
+  distribution_["MWr"] = 0;
+  distribution_["Cpl"] = 0;
+  distribution_["CplD"] = 0;
+}
 
-void ReportBuilder::addTLP(const TLP &tlp) { tlps_.push_back(tlp); }
+void ReportBuilder::initializeStream() const {
+  if (has_begun_)
+    return;
+
+  out_stream_.open(output_path_);
+  if (!out_stream_.is_open()) {
+    throw std::runtime_error("Failed to open report file for writing: " +
+                             output_path_.string());
+  }
+
+  if (format_ == ReportFormat::JSON) {
+    out_stream_ << "{\n";
+    out_stream_ << "  \"schema_version\": \"1.0\",\n";
+    out_stream_ << "  \"generated_at\": \"" << Utils::getTimestamp() << "\",\n";
+    out_stream_ << "  \"trace_file\": \"" << trace_file_.string() << "\",\n";
+    out_stream_ << "  \"packets\": [\n";
+  } else {
+    out_stream_ << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+    out_stream_ << "<report>\n";
+    out_stream_ << "  <schema_version>1.0</schema_version>\n";
+    out_stream_ << "  <generated_at>" << Utils::getTimestamp()
+                << "</generated_at>\n";
+    out_stream_ << "  <trace_file>" << trace_file_.string()
+                << "</trace_file>\n";
+    out_stream_ << "  <packets>\n";
+  }
+
+  has_begun_ = true;
+}
+
+void ReportBuilder::addTLP(
+    const TLP &tlp, const std::vector<ValidationError> &validation_errors) {
+  initializeStream();
+
+  total_packets_++;
+  if (tlp.isMalformed()) {
+    malformed_count_++;
+  } else {
+    std::string type_str = Utils::tlpTypeToString(tlp.type());
+    if (distribution_.count(type_str)) {
+      distribution_[type_str]++;
+    }
+  }
+
+  if (format_ == ReportFormat::JSON) {
+    writeJsonTLP(tlp, validation_errors);
+  } else {
+    writeXmlTLP(tlp, validation_errors);
+  }
+}
+
+void ReportBuilder::writeJsonTLP(
+    const TLP &tlp,
+    const std::vector<ValidationError> &validation_errors) const {
+  if (!first_packet_) {
+    out_stream_ << ",\n";
+  }
+  first_packet_ = false;
+
+  out_stream_ << "    {";
+  out_stream_ << "\"index\":" << tlp.index() << ",";
+  out_stream_ << "\"timestamp_ns\":" << tlp.timestampNs() << ",";
+  out_stream_ << "\"direction\":\""
+              << (tlp.direction() == Direction::TX ? "TX" : "RX") << "\",";
+  out_stream_ << "\"is_malformed\":" << (tlp.isMalformed() ? "true" : "false");
+
+  if (tlp.isMalformed()) {
+    out_stream_ << ",\"payload_hex\":\"" << tlp.rawBytes() << "\",";
+    out_stream_ << "\"decode_errors\":[";
+    bool first_de = true;
+    for (const auto &err : tlp.decodeErrors()) {
+      if (!first_de)
+        out_stream_ << ",";
+      out_stream_ << "{\"rule_id\":\"" << err.rule_id << "\",\"field\":\""
+                  << err.field << "\",\"description\":\"" << err.description
+                  << "\"}";
+      first_de = false;
+    }
+    out_stream_ << "]";
+  } else {
+    out_stream_ << ",\"tlp\":{";
+    out_stream_ << "\"type\":\"" << Utils::tlpTypeToString(tlp.type()) << "\",";
+    out_stream_ << "\"header_fmt\":\"" << Utils::fmtToStr(tlp.fmt()) << "\",";
+    out_stream_ << "\"tc\":" << static_cast<int>(tlp.tc()) << ",";
+    out_stream_ << "\"attr\":{\"no_snoop\":"
+                << (tlp.attr().no_snoop ? "true" : "false")
+                << ",\"relaxed_ordering\":"
+                << (tlp.attr().relaxed_ordering ? "true" : "false") << "},";
+    out_stream_ << "\"requester_id\":\"" << tlp.requesterId() << "\",";
+    out_stream_ << "\"completer_id\":";
+    if (tlp.completerId().has_value())
+      out_stream_ << "\"" << *tlp.completerId() << "\",";
+    else
+      out_stream_ << "null,";
+    out_stream_ << "\"tag\":" << static_cast<int>(tlp.tag()) << ",";
+    out_stream_ << "\"address\":";
+    if (tlp.address().has_value())
+      out_stream_ << "\"0x" << std::hex << *tlp.address() << std::dec << "\",";
+    else
+      out_stream_ << "null,";
+    out_stream_ << "\"length_dw\":";
+    if (tlp.lengthDw().has_value())
+      out_stream_ << *tlp.lengthDw() << ",";
+    else
+      out_stream_ << "null,";
+    out_stream_ << "\"has_data\":"
+                << ((tlp.type() == TlpType::MWr || tlp.type() == TlpType::CplD)
+                        ? "true"
+                        : "false")
+                << ",";
+    out_stream_ << "\"byte_count\":";
+    if (tlp.byteCount().has_value())
+      out_stream_ << *tlp.byteCount() << ",";
+    else
+      out_stream_ << "null,";
+    out_stream_ << "\"status\":";
+    if (tlp.status().has_value())
+      out_stream_ << static_cast<int>(*tlp.status());
+    else
+      out_stream_ << "null";
+    out_stream_ << "}";
+  }
+
+  out_stream_ << ",\"validation_errors\":[";
+  bool first_ve = true;
+  for (const auto &err : validation_errors) {
+    if (!first_ve)
+      out_stream_ << ",";
+    out_stream_ << "{\"rule_id\":\"" << err.rule_id << "\",";
+    out_stream_ << "\"category\":\""
+                << Utils::validationCategoryToStr(err.category) << "\",";
+    out_stream_ << "\"related_index\":";
+    if (err.related_index.has_value())
+      out_stream_ << *err.related_index << ",";
+    else
+      out_stream_ << "null,";
+    out_stream_ << "\"description\":\"" << err.description << "\"}";
+    first_ve = false;
+  }
+  out_stream_ << "]";
+  out_stream_ << "}";
+}
+
+void ReportBuilder::writeXmlTLP(
+    const TLP &tlp,
+    const std::vector<ValidationError> &validation_errors) const {
+  out_stream_ << "    <packet>\n";
+  out_stream_ << "      <index>" << tlp.index() << "</index>\n";
+  out_stream_ << "      <timestamp_ns>" << tlp.timestampNs()
+              << "</timestamp_ns>\n";
+  out_stream_ << "      <direction>"
+              << (tlp.direction() == Direction::TX ? "TX" : "RX")
+              << "</direction>\n";
+  out_stream_ << "      <is_malformed>"
+              << (tlp.isMalformed() ? "true" : "false") << "</is_malformed>\n";
+
+  if (tlp.isMalformed()) {
+    out_stream_ << "      <payload_hex>" << tlp.rawBytes()
+                << "</payload_hex>\n";
+    out_stream_ << "      <decode_errors>\n";
+    for (const auto &err : tlp.decodeErrors()) {
+      out_stream_ << "        <error>\n";
+      out_stream_ << "          <rule_id>" << err.rule_id << "</rule_id>\n";
+      out_stream_ << "          <field>" << err.field << "</field>\n";
+      out_stream_ << "          <description>" << err.description
+                  << "</description>\n";
+      out_stream_ << "        </error>\n";
+    }
+    out_stream_ << "      </decode_errors>\n";
+  } else {
+    out_stream_ << "      <tlp>\n";
+    out_stream_ << "        <type>" << Utils::tlpTypeToString(tlp.type())
+                << "</type>\n";
+    out_stream_ << "        <tag>" << tlp.tag() << "</tag>\n";
+    if (tlp.address().has_value()) {
+      out_stream_ << "        <address>0x" << std::hex << *tlp.address()
+                  << std::dec << "</address>\n";
+    }
+    out_stream_ << "      </tlp>\n";
+  }
+
+  if (!validation_errors.empty()) {
+    out_stream_ << "      <validation_errors>\n";
+    for (const auto &err : validation_errors) {
+      out_stream_ << "        <error>\n";
+      out_stream_ << "          <rule_id>" << err.rule_id << "</rule_id>\n";
+      out_stream_ << "          <category>"
+                  << Utils::validationCategoryToStr(err.category)
+                  << "</category>\n";
+      if (err.related_index.has_value()) {
+        out_stream_ << "          <related_index>" << *err.related_index
+                    << "</related_index>\n";
+      }
+      out_stream_ << "          <description>" << err.description
+                  << "</description>\n";
+      out_stream_ << "        </error>\n";
+    }
+    out_stream_ << "      </validation_errors>\n";
+  }
+
+  out_stream_ << "    </packet>\n";
+}
 
 void ReportBuilder::addValidationError(const ValidationError &error) {
-  errors_.push_back(error);
-}
+  initializeStream();
 
-void ReportBuilder::write(const std::filesystem::path &output_path,
-                          std::uint64_t skipped_line_count) const {
   if (format_ == ReportFormat::JSON) {
-    writeJson(output_path, skipped_line_count);
-  } else if (format_ == ReportFormat::XML) {
-    writeXml(output_path, skipped_line_count);
+    if (first_error_) {
+      out_stream_ << "\n  ],\n"; // Close packets array
+      out_stream_ << "  \"validation_errors\": [\n";
+      first_error_ = false;
+    } else {
+      out_stream_ << ",\n";
+    }
+    writeJsonError(error);
+  } else {
+    if (first_error_) {
+      out_stream_ << "  </packets>\n";
+      out_stream_ << "  <validation_errors>\n";
+      first_error_ = false;
+    }
+    writeXmlError(error);
   }
 }
 
-void ReportBuilder::writeJson(const std::filesystem::path &output_path,
-                              std::uint64_t skipped_line_count) const {
-
-  json report;
-  report["schema_version"] = "1.0";
-  report["generated_at"] = Utils::getTimestamp();
-  report["trace_file"] = trace_file_.string();
-
-  // Summary
-  json distribution;
-  distribution["MRd"] = 0;
-  distribution["MWr"] = 0;
-  distribution["Cpl"] = 0;
-  distribution["CplD"] = 0;
-
-  int malformed_count = 0;
-  for (const auto &tlp : tlps_) {
-    if (tlp.isMalformed()) {
-      malformed_count++;
-    } else {
-      std::string type_str = Utils::tlpTypeToString(tlp.type());
-      if (distribution.contains(type_str)) {
-        distribution[type_str] = distribution[type_str].get<int>() + 1;
-      }
-    }
-  }
-
-  json summary;
-  summary["total_packets"] = tlps_.size();
-  summary["tlp_type_distribution"] = distribution;
-  summary["malformed_packet_count"] = malformed_count;
-  summary["validation_error_count"] = errors_.size();
-  summary["skipped_line_count"] = skipped_line_count;
-
-  report["summary"] = summary;
-
-  // Malformed packets
-  report["malformed_packets"] = json::array();
-  for (const auto &tlp : tlps_) {
-    if (tlp.isMalformed()) {
-      json m;
-      m["packet_index"] = tlp.index();
-      m["timestamp_ns"] = tlp.timestampNs();
-      m["direction"] = (tlp.direction() == Direction::TX ? "TX" : "RX");
-      m["payload_hex"] = tlp.rawBytes();
-
-      json decode_errors = json::array();
-      for (const auto &err : tlp.decodeErrors()) {
-        json de;
-        de["rule_id"] = err.rule_id;
-        de["field"] = err.field;
-        de["description"] = err.description;
-        decode_errors.push_back(de);
-      }
-      m["decode_errors"] = decode_errors;
-      report["malformed_packets"].push_back(m);
-    }
-  }
-
-  // Validation errors
-  report["validation_errors"] = json::array();
-  for (const auto &err : errors_) {
-    json e;
-    e["rule_id"] = err.rule_id;
-    e["category"] = Utils::validationCategoryToStr(err.category);
-    e["packet_index"] = err.packet_index;
-    if (err.related_index.has_value()) {
-      e["related_index"] = *err.related_index;
-    } else {
-      e["related_index"] = nullptr;
-    }
-    e["description"] = err.description;
-    report["validation_errors"].push_back(e);
-  }
-
-  // Packets
-  report["packets"] = json::array();
-  for (const auto &tlp : tlps_) {
-    if (!tlp.isMalformed()) {
-      json p;
-      p["index"] = tlp.index();
-      p["timestamp_ns"] = tlp.timestampNs();
-      p["direction"] = (tlp.direction() == Direction::TX ? "TX" : "RX");
-      p["is_malformed"] = false;
-
-      json t;
-      t["type"] = Utils::tlpTypeToString(tlp.type());
-      t["header_fmt"] = Utils::fmtToStr(tlp.fmt());
-      t["tc"] = tlp.tc();
-
-      json attr;
-      attr["no_snoop"] = tlp.attr().no_snoop;
-      attr["relaxed_ordering"] = tlp.attr().relaxed_ordering;
-      t["attr"] = attr;
-
-      t["requester_id"] = tlp.requesterId();
-      if (tlp.completerId().has_value()) {
-        t["completer_id"] = *tlp.completerId();
-      } else {
-        t["completer_id"] = nullptr;
-      }
-      t["tag"] = tlp.tag();
-
-      if (tlp.address().has_value()) {
-        std::ostringstream oss;
-        oss << "0x" << std::hex << *tlp.address();
-        t["address"] = oss.str();
-      } else {
-        t["address"] = nullptr;
-      }
-
-      if (tlp.lengthDw().has_value()) {
-        t["length_dw"] = *tlp.lengthDw();
-      } else {
-        t["length_dw"] = nullptr;
-      }
-
-      t["has_data"] =
-          (tlp.type() == TlpType::MWr || tlp.type() == TlpType::CplD);
-
-      if (tlp.byteCount().has_value()) {
-        t["byte_count"] = *tlp.byteCount();
-      } else {
-        t["byte_count"] = nullptr;
-      }
-
-      if (tlp.status().has_value()) {
-        t["status"] = static_cast<int>(*tlp.status());
-      } else {
-        t["status"] = nullptr;
-      }
-
-      p["tlp"] = t;
-      report["packets"].push_back(p);
-    }
-  }
-
-  std::ofstream out(output_path);
-  out << report.dump(2);
+void ReportBuilder::writeJsonError(const ValidationError &error) const {
+  out_stream_ << "    {";
+  out_stream_ << "\"rule_id\":\"" << error.rule_id << "\",";
+  out_stream_ << "\"category\":\""
+              << Utils::validationCategoryToStr(error.category) << "\",";
+  out_stream_ << "\"packet_index\":" << error.packet_index << ",";
+  out_stream_ << "\"related_index\":";
+  if (error.related_index.has_value())
+    out_stream_ << *error.related_index << ",";
+  else
+    out_stream_ << "null,";
+  out_stream_ << "\"description\":\"" << error.description << "\"}";
 }
 
-using namespace tinyxml2;
+void ReportBuilder::writeXmlError(const ValidationError &error) const {
+  out_stream_ << "    <error>\n";
+  out_stream_ << "      <rule_id>" << error.rule_id << "</rule_id>\n";
+  out_stream_ << "      <category>"
+              << Utils::validationCategoryToStr(error.category)
+              << "</category>\n";
+  out_stream_ << "      <packet_index>" << error.packet_index
+              << "</packet_index>\n";
+  if (error.related_index.has_value()) {
+    out_stream_ << "      <related_index>" << *error.related_index
+                << "</related_index>\n";
+  }
+  out_stream_ << "      <description>" << error.description
+              << "</description>\n";
+  out_stream_ << "    </error>\n";
+}
 
-void ReportBuilder::writeXml(const std::filesystem::path &output_path,
-                             std::uint64_t skipped_line_count) const {
-  XMLDocument doc;
+void ReportBuilder::write(const std::filesystem::path &,
+                          std::uint64_t skipped_line_count) const {
+  initializeStream();
 
-  // Root
-  XMLElement *report = doc.NewElement("report");
-  doc.InsertFirstChild(report);
-
-  report->InsertNewChildElement("schema_version")->SetText("1.0");
-  report->InsertNewChildElement("generated_at")
-      ->SetText(Utils::getTimestamp().c_str());
-  report->InsertNewChildElement("trace_file")
-      ->SetText(trace_file_.string().c_str());
-
-  // Summary
-  XMLElement *summary = doc.NewElement("summary");
-
-  summary->InsertNewChildElement("total_packets")->SetText((int)tlps_.size());
-  summary->InsertNewChildElement("validation_error_count")
-      ->SetText((int)errors_.size());
-  summary->InsertNewChildElement("skipped_line_count")
-      ->SetText((int)skipped_line_count);
-
-  int malformed_count = 0;
-
-  XMLElement *distribution = doc.NewElement("tlp_type_distribution");
-  std::map<std::string, int> dist = {
-      {"MRd", 0}, {"MWr", 0}, {"Cpl", 0}, {"CplD", 0}};
-
-  for (const auto &tlp : tlps_) {
-    if (tlp.isMalformed()) {
-      malformed_count++;
+  if (format_ == ReportFormat::JSON) {
+    if (first_error_) {
+      out_stream_ << "\n  ],\n"; // Close packets array if no errors were added
+      out_stream_ << "  \"validation_errors\": [],\n";
     } else {
-      std::string type = Utils::tlpTypeToString(tlp.type());
-      dist[type]++;
-    }
-  }
-
-  for (auto &[k, v] : dist) {
-    XMLElement *e = doc.NewElement(k.c_str());
-    e->SetText(v);
-    distribution->InsertEndChild(e);
-  }
-
-  summary->InsertEndChild(distribution);
-  summary->InsertNewChildElement("malformed_packet_count")
-      ->SetText(malformed_count);
-
-  report->InsertEndChild(summary);
-
-  // Malformed Packets
-  XMLElement *malformed_packets = doc.NewElement("malformed_packets");
-
-  for (const auto &tlp : tlps_) {
-    if (!tlp.isMalformed())
-      continue;
-
-    XMLElement *m = doc.NewElement("packet");
-
-    m->InsertNewChildElement("packet_index")->SetText(tlp.index());
-    m->InsertNewChildElement("timestamp_ns")->SetText(tlp.timestampNs());
-    m->InsertNewChildElement("direction")
-        ->SetText(tlp.direction() == Direction::TX ? "TX" : "RX");
-    m->InsertNewChildElement("payload_hex")->SetText(tlp.rawBytes().c_str());
-
-    XMLElement *decode_errors = doc.NewElement("decode_errors");
-
-    for (const auto &err : tlp.decodeErrors()) {
-      XMLElement *de = doc.NewElement("error");
-
-      de->InsertNewChildElement("rule_id")->SetText(err.rule_id.c_str());
-      de->InsertNewChildElement("field")->SetText(err.field.c_str());
-      de->InsertNewChildElement("description")
-          ->SetText(err.description.c_str());
-
-      decode_errors->InsertEndChild(de);
+      out_stream_ << "\n  ],\n"; // Close validation_errors array
     }
 
-    m->InsertEndChild(decode_errors);
-    malformed_packets->InsertEndChild(m);
-  }
-
-  report->InsertEndChild(malformed_packets);
-
-  // Validation Errors
-  XMLElement *validation_errors = doc.NewElement("validation_errors");
-
-  for (const auto &err : errors_) {
-    XMLElement *e = doc.NewElement("error");
-
-    e->InsertNewChildElement("rule_id")->SetText(err.rule_id.c_str());
-    e->InsertNewChildElement("category")
-        ->SetText(Utils::validationCategoryToStr(err.category).c_str());
-    e->InsertNewChildElement("packet_index")->SetText(err.packet_index);
-
-    if (err.related_index.has_value()) {
-      e->InsertNewChildElement("related_index")->SetText(*err.related_index);
+    out_stream_ << "  \"summary\": {\n";
+    out_stream_ << "    \"total_packets\": " << total_packets_ << ",\n";
+    out_stream_ << "    \"malformed_packet_count\": " << malformed_count_
+                << ",\n";
+    out_stream_ << "    \"skipped_line_count\": " << skipped_line_count
+                << ",\n";
+    out_stream_ << "    \"tlp_type_distribution\": {\n";
+    bool first_dist = true;
+    for (auto const &[type, count] : distribution_) {
+      if (!first_dist)
+        out_stream_ << ",\n";
+      out_stream_ << "      \"" << type << "\": " << count;
+      first_dist = false;
+    }
+    out_stream_ << "\n    }\n";
+    out_stream_ << "  }\n";
+    out_stream_ << "}\n";
+  } else {
+    if (first_error_) {
+      out_stream_ << "  </packets>\n";
+      out_stream_ << "  <validation_errors/>\n";
+    } else {
+      out_stream_ << "  </validation_errors>\n";
     }
 
-    e->InsertNewChildElement("description")->SetText(err.description.c_str());
-
-    validation_errors->InsertEndChild(e);
-  }
-
-  report->InsertEndChild(validation_errors);
-
-  // Packets
-  XMLElement *packets = doc.NewElement("packets");
-
-  for (const auto &tlp : tlps_) {
-    if (tlp.isMalformed())
-      continue;
-
-    XMLElement *p = doc.NewElement("packet");
-
-    p->InsertNewChildElement("index")->SetText(tlp.index());
-    p->InsertNewChildElement("timestamp_ns")->SetText(tlp.timestampNs());
-    p->InsertNewChildElement("direction")
-        ->SetText(tlp.direction() == Direction::TX ? "TX" : "RX");
-
-    XMLElement *t = doc.NewElement("tlp");
-
-    t->InsertNewChildElement("type")->SetText(
-        Utils::tlpTypeToString(tlp.type()).c_str());
-
-    t->InsertNewChildElement("tag")->SetText(tlp.tag());
-
-    if (tlp.address().has_value()) {
-      std::ostringstream oss;
-      oss << "0x" << std::hex << *tlp.address();
-      t->InsertNewChildElement("address")->SetText(oss.str().c_str());
+    // Summary
+    out_stream_ << "  <summary>\n";
+    out_stream_ << "    <total_packets>" << total_packets_
+                << "</total_packets>\n";
+    out_stream_ << "    <tlp_type_distribution>\n";
+    for (auto const &[type, count] : distribution_) {
+      out_stream_ << "      <" << type << ">" << count << "</" << type << ">\n";
     }
-
-    p->InsertEndChild(t);
-    packets->InsertEndChild(p);
+    out_stream_ << "    </tlp_type_distribution>\n";
+    out_stream_ << "    <malformed_packet_count>" << malformed_count_
+                << "</malformed_packet_count>\n";
+    out_stream_ << "    <skipped_line_count>" << skipped_line_count
+                << "</skipped_line_count>\n";
+    out_stream_ << "  </summary>\n";
+    out_stream_ << "</report>\n";
   }
 
-  report->InsertEndChild(packets);
-
-  doc.SaveFile(output_path.string().c_str());
+  out_stream_.close();
 }
