@@ -53,7 +53,7 @@ ParseResult ReportParser::parseJson(const std::string &content) {
       return {std::nullopt, "Missing required field: schema_version", false};
     }
     report.schema_version = jsonReport["schema_version"].get<std::string>();
-    if (report.schema_version != "1.0") {
+    if (report.schema_version != SCHEMA_VERSION) {
       return {std::nullopt,
               "Unsupported schema version: " + report.schema_version, false};
     }
@@ -82,21 +82,21 @@ ParseResult ReportParser::parseJson(const std::string &content) {
     // Global Validation Errors
     if (jsonReport.contains("validation_errors")) {
       for (auto &jsonError : jsonReport["validation_errors"]) {
-        ValidationError v_err;
-        v_err.rule_id = jsonError.value("rule_id", "UNKNOWN");
-        v_err.category = Utils::stringToValidationType(
+        ValidationError validationError;
+        validationError.rule_id = jsonError.value("rule_id", "UNKNOWN");
+        validationError.category = Utils::stringToValidationType(
             jsonError.value("category", "UNKNOWN"));
-        v_err.packet_index = jsonError.value("packet_index", 0ULL);
-        v_err.description = jsonError.value("description", "");
+        validationError.packet_index = jsonError.value("packet_index", 0ULL);
+        validationError.description = jsonError.value("description", "");
 
         if (jsonError.contains("related_index") &&
             !jsonError["related_index"].is_null()) {
-          v_err.related_index =
+          validationError.related_index =
               std::to_string(jsonError["related_index"].get<uint64_t>());
         } else {
-          v_err.related_index = "—";
+          validationError.related_index = "—";
         }
-        report.all_validation_errors.push_back(v_err);
+        report.all_validation_errors.push_back(validationError);
       }
     }
 
@@ -165,31 +165,31 @@ ParseResult ReportParser::parseJson(const std::string &content) {
         // packet Decode Errors
         if (jsonPacket.contains("decode_errors")) {
           for (auto &jsonError : jsonPacket["decode_errors"]) {
-            DecodeError d_err;
-            d_err.rule_id = jsonError.value("rule_id", "UNKNOWN");
-            d_err.field = jsonError.value("field", "UNKNOWN");
-            d_err.description = jsonError.value("description", "");
-            packet.decode_errors.push_back(d_err);
+            DecodeError decodeError;
+            decodeError.rule_id = jsonError.value("rule_id", "UNKNOWN");
+            decodeError.field = jsonError.value("field", "UNKNOWN");
+            decodeError.description = jsonError.value("description", "");
+            packet.decode_errors.push_back(decodeError);
           }
         }
 
         // Packet Validation Errors
         if (jsonPacket.contains("validation_errors")) {
           for (auto &jsonError : jsonPacket["validation_errors"]) {
-            ValidationError v_err;
-            v_err.rule_id = jsonError.value("rule_id", "UNKNOWN");
-            v_err.category = Utils::stringToValidationType(
+            ValidationError validationError;
+            validationError.rule_id = jsonError.value("rule_id", "UNKNOWN");
+            validationError.category = Utils::stringToValidationType(
                 jsonError.value("category", "UNKNOWN"));
-            v_err.packet_index = packet.index;
-            v_err.description = jsonError.value("description", "");
+            validationError.packet_index = packet.index;
+            validationError.description = jsonError.value("description", "");
             if (jsonError.contains("related_index") &&
                 !jsonError["related_index"].is_null()) {
-              v_err.related_index =
+              validationError.related_index =
                   std::to_string(jsonError["related_index"].get<uint64_t>());
             } else {
-              v_err.related_index = "—";
+              validationError.related_index = "—";
             }
-            packet.validation_errors.push_back(v_err);
+            packet.validation_errors.push_back(validationError);
           }
         }
 
@@ -201,10 +201,11 @@ ParseResult ReportParser::parseJson(const std::string &content) {
       }
     }
 
-    for (const auto &v_err : report.all_validation_errors) {
-      if (v_err.packet_index < report.packets.size()) {
-        report.packets[v_err.packet_index].has_validation_errors = true;
-        report.packets[v_err.packet_index].has_any_error = true;
+    for (const auto &validationError : report.all_validation_errors) {
+      if (validationError.packet_index < report.packets.size()) {
+        report.packets[validationError.packet_index].has_validation_errors =
+            true;
+        report.packets[validationError.packet_index].has_any_error = true;
       }
     }
 
@@ -246,7 +247,7 @@ ParseResult ReportParser::parseXml(const std::string &content) {
 
     report.schema_version = schemaNode.text().as_string();
 
-    if (report.schema_version != "1.0") {
+    if (report.schema_version != SCHEMA_VERSION) {
       return {std::nullopt,
               "Unsupported schema version: " + report.schema_version, false};
     }
@@ -421,17 +422,18 @@ ParseResult ReportParser::parseXml(const std::string &content) {
 
           for (auto errorNode : decodeErrors.children("error")) {
 
-            DecodeError d_err;
+            DecodeError decodeError;
 
-            d_err.rule_id =
+            decodeError.rule_id =
                 errorNode.child("rule_id").text().as_string("UNKNOWN");
 
-            d_err.field = errorNode.child("field").text().as_string("UNKNOWN");
+            decodeError.field =
+                errorNode.child("field").text().as_string("UNKNOWN");
 
-            d_err.description =
+            decodeError.description =
                 errorNode.child("description").text().as_string();
 
-            packet.decode_errors.push_back(d_err);
+            packet.decode_errors.push_back(decodeError);
           }
         }
 
@@ -443,28 +445,28 @@ ParseResult ReportParser::parseXml(const std::string &content) {
 
           for (auto errorNode : packetValidationErrors.children("error")) {
 
-            ValidationError v_err;
+            ValidationError validationError;
 
-            v_err.rule_id =
+            validationError.rule_id =
                 errorNode.child("rule_id").text().as_string("UNKNOWN");
 
-            v_err.category = Utils::stringToValidationType(
+            validationError.category = Utils::stringToValidationType(
                 errorNode.child("category").text().as_string("UNKNOWN"));
 
-            v_err.packet_index = packet.index;
+            validationError.packet_index = packet.index;
 
-            v_err.description =
+            validationError.description =
                 errorNode.child("description").text().as_string();
 
             auto related = errorNode.child("related_index");
 
             if (related) {
-              v_err.related_index = related.text().as_string();
+              validationError.related_index = related.text().as_string();
             } else {
-              v_err.related_index = "—";
+              validationError.related_index = "—";
             }
 
-            packet.validation_errors.push_back(v_err);
+            packet.validation_errors.push_back(validationError);
           }
         }
 
@@ -478,13 +480,14 @@ ParseResult ReportParser::parseXml(const std::string &content) {
     }
 
     // Mark packets referenced by global validation errors
-    for (const auto &v_err : report.all_validation_errors) {
+    for (const auto &validationError : report.all_validation_errors) {
 
-      if (v_err.packet_index < report.packets.size()) {
+      if (validationError.packet_index < report.packets.size()) {
 
-        report.packets[v_err.packet_index].has_validation_errors = true;
+        report.packets[validationError.packet_index].has_validation_errors =
+            true;
 
-        report.packets[v_err.packet_index].has_any_error = true;
+        report.packets[validationError.packet_index].has_any_error = true;
       }
     }
 

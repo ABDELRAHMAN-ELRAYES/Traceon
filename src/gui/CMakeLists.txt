@@ -5,10 +5,14 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 # Create the GUI library, including the third-party pugixml source
+
 add_library(gui_lib STATIC 
     src/parser/report_parser.cpp
     src/utils/utils.cpp
     ${CMAKE_SOURCE_DIR}/third-party/libs/pugixml/pugixml.cpp
+    include/gui/ui/main_window.h
+    src/ui/main_window.cpp
+    
 )
 
 target_link_libraries(gui_lib PRIVATE

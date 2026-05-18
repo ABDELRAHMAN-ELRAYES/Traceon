@@ -4,6 +4,9 @@
 #include "gui/models/models.h"
 #include <filesystem>
 #include <optional>
+#include <string>
+
+const std::string SCHEMA_VERSION = "1.0";
 
 struct ParseResult {
   std::optional<ReportModel> report;
