@@ -1,5 +1,4 @@
 #include "gui/ui/main_window.h"
-#include "gui/parser/report_parser.h"
 #include <QAction>
 #include <QFileDialog>
 #include <QFrame>
@@ -8,7 +7,8 @@
 #include <QSplitter>
 #include <QVBoxLayout>
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
+MainWindow::MainWindow(ApplicationController *controller, QWidget *parent)
+    : QMainWindow(parent), controller_(controller) {
   // Setup the window title & size
   setWindowTitle("Traceon - PCIe Protocol Analyzer");
   resize(1200, 800);
@@ -79,6 +79,6 @@ void MainWindow::onOpenFile() {
 
   if (!fileName.isEmpty()) {
     // Start Parsing the file
-    ParseResult result = ReportParser::parse(fileName.toStdString());
+    controller_->loadReport(fileName.toStdString());
   }
 }

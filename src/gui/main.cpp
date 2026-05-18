@@ -6,8 +6,11 @@ int main(int argc, char *argv[]) {
   app.setApplicationName("Traceon - PCIe Protocol Analyzer");
   app.setApplicationVersion("1.0.0");
 
+  // App Controller
+  ApplicationController controller;
+
   // Main window
-  MainWindow window;
+  MainWindow window(&controller);
   window.show();
 
   return app.exec();

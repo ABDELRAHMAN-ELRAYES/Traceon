@@ -12,7 +12,8 @@ add_library(gui_lib STATIC
     ${CMAKE_SOURCE_DIR}/third-party/libs/pugixml/pugixml.cpp
     include/gui/ui/main_window.h
     src/ui/main_window.cpp
-    
+    include/gui/controller/application_controller.h
+    src/controller/application_controller.cpp
 )
 
 target_link_libraries(gui_lib PRIVATE
