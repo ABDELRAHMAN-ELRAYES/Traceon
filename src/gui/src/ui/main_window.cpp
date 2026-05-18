@@ -1,9 +1,12 @@
 #include "gui/ui/main_window.h"
 #include "gui/parser/report_parser.h"
+#include <QAction>
+#include <QFileDialog>
+#include <QFrame>
+#include <QLabel>
 #include <QMenuBar>
+#include <QSplitter>
 #include <QVBoxLayout>
-#include <qaction.h>
-#include <qfiledialog.h>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   // Setup the window title & size
@@ -16,11 +19,40 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   // Setup the menu options
   setupMenu();
 }
+QFrame *createPanel(const QString &text, const QString &color) {
+  QFrame *frame = new QFrame();
+  frame->setStyleSheet("background-color:" + color + ";");
+  QVBoxLayout *layout = new QVBoxLayout(frame);
+  QLabel *label = new QLabel(text);
+  label->setStyleSheet("font-size: 18px; color: white;");
+  layout->addWidget(label);
+  return frame;
+}
 
 void MainWindow::setupLayout() {
   // Setup a central widget
   QWidget *centralWidget = new QWidget(this);
   QVBoxLayout *layout = new QVBoxLayout(centralWidget);
+
+  // Setup the grid splitter layout
+  QFrame *topLeft = createPanel("Top Left", "red");
+  QFrame *topRight = createPanel("Top right", "blue");
+  QFrame *bottomLeft = createPanel("Bottom Left", "green");
+  QFrame *bottomRight = createPanel("Bottom Right", "yellow");
+
+  // Main Splitter
+  QSplitter *mainSplitter = new QSplitter(Qt::Vertical);
+
+  // Horizontal splitters
+  QSplitter *topSplitter = new QSplitter(Qt::Horizontal, mainSplitter);
+  topSplitter->addWidget(topLeft);
+  topSplitter->addWidget(topRight);
+
+  QSplitter *bottomSplitter = new QSplitter(Qt::Horizontal, mainSplitter);
+  bottomSplitter->addWidget(bottomLeft);
+  bottomSplitter->addWidget(bottomRight);
+
+  layout->addWidget(mainSplitter);
 
   setCentralWidget(centralWidget);
 }
