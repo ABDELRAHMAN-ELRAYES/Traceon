@@ -22,3 +22,9 @@ void ApplicationController::loadReport(const std::filesystem::path &filePath) {
     emit loadFailed(QString::fromStdString(result.error_message));
   }
 }
+
+void ApplicationController::onPacketSelected(int index) {
+  if (index >= 0 && index < static_cast<int>(report_.packets.size())) {
+    emit packetSelected(report_.packets[index]);
+  }
+}

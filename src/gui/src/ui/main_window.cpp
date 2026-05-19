@@ -1,4 +1,5 @@
 #include "gui/ui/main_window.h"
+#include "gui/ui/packet_details_area.h"
 #include <QAction>
 #include <QFileDialog>
 #include <QFrame>
@@ -29,6 +30,14 @@ MainWindow::MainWindow(ApplicationController *controller, QWidget *parent)
                                   "Failed to load and parse the report:\n" +
                                       errorMessage);
           });
+  // Connect the row click signal with the display packet details slot
+  connect(packets_table_, &QTableView::clicked, packet_details_area_,
+          [this](const QModelIndex &index) {
+            controller_->onPacketSelected(index.row());
+          });
+
+  connect(controller_, &ApplicationController::packetSelected,
+          packet_details_area_, &PacketDetailsArea::displayPacket);
 }
 
 QFrame *createPanel(const QString &text, const QString &color) {
@@ -59,8 +68,10 @@ void MainWindow::setupLayout() {
   packets_table_->horizontalHeader()->setStretchLastSection(true);
   packets_table_->verticalHeader()->hide();
 
+  // Define the packet details section
+  packet_details_area_ = new PacketDetailsArea;
+
   // Other layout panels for right and bottom sections (placeholders)
-  QFrame *topRight = createPanel("Top right", "blue");
   QFrame *bottomLeft = createPanel("Bottom Left", "green");
   QFrame *bottomRight = createPanel("Bottom Right", "yellow");
 
@@ -71,7 +82,7 @@ void MainWindow::setupLayout() {
   // Horizontal splitters
   QSplitter *topSplitter = new QSplitter(Qt::Horizontal, mainSplitter);
   topSplitter->addWidget(packets_table_);
-  topSplitter->addWidget(topRight);
+  topSplitter->addWidget(packet_details_area_);
 
   QSplitter *bottomSplitter = new QSplitter(Qt::Horizontal, mainSplitter);
   bottomSplitter->addWidget(bottomLeft);

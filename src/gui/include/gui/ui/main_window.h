@@ -2,6 +2,7 @@
 #define MAIN_WINDOW_H
 
 #include "gui/controller/application_controller.h"
+#include "gui/ui/packet_details_area.h"
 #include <QMainWindow>
 #include <QTableView>
 
@@ -10,6 +11,7 @@ class MainWindow : public QMainWindow {
 private:
   ApplicationController *controller_;
   QTableView *packets_table_;
+  PacketDetailsArea *packet_details_area_;
 
   void setupLayout();
   void setupMenu();

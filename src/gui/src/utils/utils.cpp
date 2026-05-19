@@ -25,7 +25,7 @@ std::string directionToString(Direction direction) {
   case Direction::RX:
     return "RX";
   default:
-    return "UNKNOWN";
+    return "—";
   }
 }
 
@@ -56,7 +56,7 @@ std::string tlpTypeToString(TlpType type) {
   case TlpType::Cpl:
     return "Cpl";
   default:
-    return "Unknown";
+    return "—";
   }
 }
 
