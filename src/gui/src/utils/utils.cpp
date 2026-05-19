@@ -1,4 +1,5 @@
 #include "gui/utils/utils.h"
+#include "gui/ui/packets_table.h"
 #include <algorithm>
 #include <chrono>
 #include <iomanip>
@@ -109,13 +110,13 @@ CompletionStatus intToCompletionStatus(int statusVal) {
 std::string completionStatusToStr(CompletionStatus status) {
   switch (status) {
   case CompletionStatus::SC:
-    return "SC (Successful Completion)";
+    return "SC";
   case CompletionStatus::UR:
-    return "UR (Unsupported Request)";
+    return "UR";
   case CompletionStatus::CA:
-    return "CA (Completer Abort)";
+    return "CA";
   default:
-    return "Unknown";
+    return "—";
   }
 }
 
@@ -136,9 +137,9 @@ ValidationType stringToValidationType(const std::string &strCategory) {
     return ValidationType::TAG_COLLISION;
   if (str == "INVALID_FIELD_VALUE")
     return ValidationType::INVALID_FIELD_VALUE;
-  
+
   // Default fallback
-  return ValidationType::INVALID_FIELD_VALUE; 
+  return ValidationType::INVALID_FIELD_VALUE;
 }
 
 std::string validationCategoryToStr(ValidationType type) {
@@ -158,7 +159,7 @@ std::string validationCategoryToStr(ValidationType type) {
   case ValidationType::INVALID_FIELD_VALUE:
     return "INVALID_FIELD_VALUE";
   default:
-    return "UNKNOWN";
+    return "—";
   }
 }
 
@@ -172,4 +173,28 @@ std::string getTimestamp() {
   return oss.str();
 }
 
+QVariant getTableColumnStr(int section) {
+  switch (section) {
+  case PacketsTableModel::Index:
+    return "Index";
+  case PacketsTableModel::Timestamp:
+    return "Timestamp (ns)";
+  case PacketsTableModel::Direction:
+    return "Direction";
+  case PacketsTableModel::Type:
+    return "Type";
+  case PacketsTableModel::Address:
+    return "Address";
+  case PacketsTableModel::Length:
+    return "Length";
+  case PacketsTableModel::Tag:
+    return "Tag";
+  case PacketsTableModel::Status:
+    return "Status";
+  case PacketsTableModel::Errors:
+    return "Validation Summary";
+  default:
+    return QVariant();
+  }
+}
 } // namespace Utils

@@ -3,11 +3,13 @@
 
 #include "gui/controller/application_controller.h"
 #include <QMainWindow>
+#include <QTableView>
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
 private:
   ApplicationController *controller_;
+  QTableView *packets_table_;
 
   void setupLayout();
   void setupMenu();

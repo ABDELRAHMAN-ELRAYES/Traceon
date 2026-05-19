@@ -14,6 +14,8 @@ add_library(gui_lib STATIC
     src/ui/main_window.cpp
     include/gui/controller/application_controller.h
     src/controller/application_controller.cpp
+    include/gui/ui/packets_table.h
+    src/ui/packets_table.cpp
 )
 
 target_link_libraries(gui_lib PRIVATE

@@ -2,6 +2,7 @@
 #define UTILS_NAMESPACE
 
 #include "gui/models/models.h"
+#include <QVariant>
 #include <string>
 
 namespace Utils {
@@ -23,6 +24,8 @@ ValidationType stringToValidationType(const std::string &strCategory);
 std::string validationCategoryToStr(ValidationType type);
 
 std::string getTimestamp();
+
+QVariant getTableColumnStr(int section);
 
 } // namespace Utils
 
