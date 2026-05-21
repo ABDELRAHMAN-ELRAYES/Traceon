@@ -20,6 +20,8 @@ add_library(gui_lib STATIC
     src/ui/packet_details_area.cpp
     include/gui/ui/errors_area.h
     src/ui/errors_area.cpp
+    include/gui/ui/summary_area.h
+    src/ui/summary_area.cpp
 )
 
 target_link_libraries(gui_lib PRIVATE

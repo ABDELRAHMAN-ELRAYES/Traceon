@@ -1,5 +1,6 @@
 #include "gui/ui/main_window.h"
 #include "gui/controller/application_controller.h"
+#include "gui/models/models.h"
 #include "gui/ui/errors_area.h"
 #include "gui/ui/packet_details_area.h"
 #include <QAction>
@@ -47,16 +48,6 @@ MainWindow::MainWindow(ApplicationController *controller, QWidget *parent)
           &MainWindow::onLoadCompleted);
 }
 
-QFrame *createPanel(const QString &text, const QString &color) {
-  QFrame *frame = new QFrame();
-  frame->setStyleSheet("background-color:" + color + ";");
-  QVBoxLayout *layout = new QVBoxLayout(frame);
-  QLabel *label = new QLabel(text);
-  label->setStyleSheet("font-size: 18px; color: white;");
-  layout->addWidget(label);
-  return frame;
-}
-
 void MainWindow::setupLayout() {
   // Setup a central widget
   QWidget *centralWidget = new QWidget(this);
@@ -78,11 +69,6 @@ void MainWindow::setupLayout() {
   // Define the packet details section
   packet_details_area_ = new PacketDetailsArea;
 
-  // Other layout panels for right and bottom sections (placeholders)
-
-  errors_area_ = new ErrorsArea;
-  QFrame *bottomRight = createPanel("Bottom Right", "yellow");
-
   // Main Splitter
   QSplitter *mainSplitter = new QSplitter(Qt::Vertical);
   layout->addWidget(mainSplitter);
@@ -93,8 +79,12 @@ void MainWindow::setupLayout() {
   topSplitter->addWidget(packet_details_area_);
 
   QSplitter *bottomSplitter = new QSplitter(Qt::Horizontal, mainSplitter);
+
+  errors_area_ = new ErrorsArea;
   bottomSplitter->addWidget(errors_area_);
-  bottomSplitter->addWidget(bottomRight);
+
+  summary_area_ = new SummaryArea;
+  bottomSplitter->addWidget(summary_area_);
 
   setCentralWidget(centralWidget);
 
@@ -130,5 +120,7 @@ void MainWindow::onOpenFile() {
   }
 }
 void MainWindow::onLoadCompleted() {
-  errors_area_->displayErrors(controller_->getReport().all_validation_errors);
+  const ReportModel *report = &controller_->getReport();
+  errors_area_->displayErrors(report->all_validation_errors);
+  summary_area_->displaySummary(report->stats);
 }

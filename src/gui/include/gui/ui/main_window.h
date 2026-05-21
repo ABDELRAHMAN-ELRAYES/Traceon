@@ -4,6 +4,7 @@
 #include "gui/controller/application_controller.h"
 #include "gui/ui/errors_area.h"
 #include "gui/ui/packet_details_area.h"
+#include "gui/ui/summary_area.h"
 #include <QMainWindow>
 #include <QTableView>
 
@@ -14,11 +15,12 @@ private:
   QTableView *packets_table_;
   PacketDetailsArea *packet_details_area_;
   ErrorsArea *errors_area_;
+  SummaryArea *summary_area_;
 
   void setupLayout();
   void setupMenu();
   void onOpenFile();
-  
+
 public slots:
   void onLoadCompleted();
 

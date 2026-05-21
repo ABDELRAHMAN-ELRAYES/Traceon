@@ -5,7 +5,7 @@
 ErrorsArea::ErrorsArea(QWidget *parent) : QWidget(parent) {
   QVBoxLayout *layout = new QVBoxLayout(this);
 
-  label_ = new QLabel("<b>Validation Errors(0)</b>", this);
+  label_ = new QLabel("<b>Validation Errors (0)</b>", this);
   layout->addWidget(label_);
 
   list_area_ = new QListWidget(this);
