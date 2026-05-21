@@ -1,4 +1,6 @@
 #include "gui/ui/main_window.h"
+#include "gui/controller/application_controller.h"
+#include "gui/ui/errors_area.h"
 #include "gui/ui/packet_details_area.h"
 #include <QAction>
 #include <QFileDialog>
@@ -36,8 +38,13 @@ MainWindow::MainWindow(ApplicationController *controller, QWidget *parent)
             controller_->onPacketSelected(index.row());
           });
 
+  // View the packet details on row click
   connect(controller_, &ApplicationController::packetSelected,
           packet_details_area_, &PacketDetailsArea::displayPacket);
+
+  // on Report load view the validation errors
+  connect(controller_, &ApplicationController::loadCompleted, this,
+          &MainWindow::onLoadCompleted);
 }
 
 QFrame *createPanel(const QString &text, const QString &color) {
@@ -72,7 +79,8 @@ void MainWindow::setupLayout() {
   packet_details_area_ = new PacketDetailsArea;
 
   // Other layout panels for right and bottom sections (placeholders)
-  QFrame *bottomLeft = createPanel("Bottom Left", "green");
+
+  errors_area_ = new ErrorsArea;
   QFrame *bottomRight = createPanel("Bottom Right", "yellow");
 
   // Main Splitter
@@ -85,7 +93,7 @@ void MainWindow::setupLayout() {
   topSplitter->addWidget(packet_details_area_);
 
   QSplitter *bottomSplitter = new QSplitter(Qt::Horizontal, mainSplitter);
-  bottomSplitter->addWidget(bottomLeft);
+  bottomSplitter->addWidget(errors_area_);
   bottomSplitter->addWidget(bottomRight);
 
   setCentralWidget(centralWidget);
@@ -120,4 +128,7 @@ void MainWindow::onOpenFile() {
     // Start Parsing the file via the controller
     controller_->loadReport(fileName.toStdString());
   }
+}
+void MainWindow::onLoadCompleted() {
+  errors_area_->displayErrors(controller_->getReport().all_validation_errors);
 }

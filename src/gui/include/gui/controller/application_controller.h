@@ -30,6 +30,7 @@ public:
   PacketsTableModel *getPacketsTableModel() const {
     return packets_table_model_;
   }
+  const ReportModel &getReport() const { return report_; }
   const std::vector<Packet> &getPackets() const { return report_.packets; }
   const Packet &getPacket(int index) const { return report_.packets.at(index); }
 };
