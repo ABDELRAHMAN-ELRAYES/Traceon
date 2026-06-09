@@ -1,3 +1,4 @@
+from typing import List
 import os
 import shutil
 import subprocess
@@ -107,3 +108,62 @@ class Runner:
             trace_path=trace_path,
             report_path=report_path,
         )
+
+    def run_batch(
+        self,
+        trace_paths: List[str],
+        output_dir: str,
+        format: str = "json",
+        timeout_s: float = 60.0,
+    ) -> List[RunResult]:
+        results = []
+        for idx, trace_path in enumerate(trace_paths):
+            try:
+                res = self.run(
+                    trace_path, output_dir, format=format, timeout_s=timeout_s
+                )
+            except AnalyzerTimeoutError as e:
+                base_name = os.path.splitext(os.path.basename(trace_path))[0]
+                report_path = os.path.abspath(
+                    os.path.join(output_dir, f"{base_name}.{format.lower()}")
+                )
+                res = RunResult(
+                    success=False,
+                    exit_code=-2,
+                    execution_output="",
+                    execution_error=str(e),
+                    trace_path=trace_path,
+                    report_path=report_path,
+                    error=f"Timeout: {e}",
+                )
+            except AnalyzerNotFoundError as e:
+                base_name = os.path.splitext(os.path.basename(trace_path))[0]
+                report_path = os.path.abspath(
+                    os.path.join(output_dir, f"{base_name}.{format.lower()}")
+                )
+                res = RunResult(
+                    success=False,
+                    exit_code=-3,
+                    execution_output="",
+                    execution_error=str(e),
+                    trace_path=trace_path,
+                    report_path=report_path,
+                    error=f"Analyzer not found: {e}",
+                )
+            except Exception as e:
+                base_name = os.path.splitext(os.path.basename(trace_path))[0]
+                report_path = os.path.abspath(
+                    os.path.join(output_dir, f"{base_name}.{format.lower()}")
+                )
+                res = RunResult(
+                    success=False,
+                    exit_code=-4,
+                    execution_output="",
+                    execution_error=str(e),
+                    trace_path=trace_path,
+                    report_path=report_path,
+                    error=f"Error during execution: {e}",
+                )
+
+            results.append(res)
+        return results
