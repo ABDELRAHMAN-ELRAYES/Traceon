@@ -6,13 +6,23 @@
 #include "analyzer-engine/validator/protocol_validator.h"
 #include <iostream>
 #include <optional>
+#include <system_error>
 #include <vector>
 
 AnalyzerEngine::AnalyzerEngine(std::filesystem::path trace_path,
                                std::filesystem::path report_path,
                                ReportFormat report_format, bool verbose)
     : trace_path_(std::move(trace_path)), report_path_(std::move(report_path)),
-      report_format_(report_format), verbose_(verbose) {}
+      report_format_(report_format), verbose_(verbose) {
+  std::error_code ec;
+  if (std::filesystem::is_directory(report_path_, ec) || report_path_.filename().empty()) {
+    if (report_format_ == ReportFormat::JSON) {
+      report_path_ /= "report.json";
+    } else if (report_format_ == ReportFormat::XML) {
+      report_path_ /= "report.xml";
+    }
+  }
+}
 
 void AnalyzerEngine::run() {
   TraceInputLayer inputLayer{trace_path_};

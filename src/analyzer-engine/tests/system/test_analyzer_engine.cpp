@@ -242,3 +242,26 @@ TEST_F(AnalyzerEngineSystemTest, LargeTrace) {
 
   EXPECT_TRUE(verifyLargeTraceSummary(1000000));
 }
+
+TEST_F(AnalyzerEngineSystemTest, OutputDirectorySupport) {
+  std::string temp_dir = "test_output_dir";
+  std::filesystem::create_directory(temp_dir);
+
+  writeTrace({"1000,TX,0000000101000A0030000000"});
+  
+  // Set test_report_path to the directory so runAnalyzer uses it
+  test_report_path = temp_dir;
+  runAnalyzer();
+
+  std::filesystem::path generated_report = std::filesystem::path(temp_dir) / "report.json";
+  EXPECT_TRUE(std::filesystem::exists(generated_report));
+
+  // Read the generated report to verify it is correct
+  std::ifstream file(generated_report);
+  json report;
+  file >> report;
+  EXPECT_EQ(report["summary"]["total_packets"], 1);
+
+  // Clean up
+  std::filesystem::remove_all(temp_dir);
+}
