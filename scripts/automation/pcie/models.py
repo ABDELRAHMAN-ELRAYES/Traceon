@@ -11,7 +11,7 @@ class RunResult:
     trace_path: str
     report_path: str
     error: str = ""
-    report: Optional["ReportModel"] = None
+    report: Optional[ReportModel] = None
 
 
 @dataclass
