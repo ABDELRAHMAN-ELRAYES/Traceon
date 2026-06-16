@@ -1,7 +1,7 @@
 import os
 import json
-from exceptions import ReportParseError
-from models import (
+from .exceptions import ReportParseError
+from .models import (
     ReportModel,
     Summary,
     Packet,
