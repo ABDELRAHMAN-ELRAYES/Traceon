@@ -3,12 +3,13 @@ import shutil
 import subprocess
 from models import RunResult
 from exceptions import AnalyzerNotFoundError, AnalyzerTimeoutError
+from parser import ReportParser
 
 
 class Runner:
     def __init__(self, analyzer_path: str):
         path = shutil.which(analyzer_path) or os.path.abspath(analyzer_path)
-        if not os.path.isfile(path) or os.access(path, os.X_OK):
+        if not os.path.isfile(path) or not os.access(path, os.X_OK):
             raise AnalyzerNotFoundError(
                 f"Analyzer is not found or not permitted to be executed at: {analyzer_path}"
             )
@@ -99,6 +100,21 @@ class Runner:
                 report_path=report_path,
                 error=f"Report file was not generated at: {report_path}",
             )
+
+        try:
+            parser = ReportParser()
+            report = parser.parse(report_path)
+        except Exception as e:
+            return RunResult(
+                success=False,
+                exit_code=exit_code,
+                execution_output=execution_output,
+                execution_error=execution_error,
+                trace_path=trace_path,
+                report_path=report_path,
+                error=f"Failed to parse report file: {e}",
+            )
+
         return RunResult(
             success=True,
             exit_code=exit_code,
@@ -106,4 +122,5 @@ class Runner:
             execution_error=execution_error,
             trace_path=trace_path,
             report_path=report_path,
+            report=report,
         )
