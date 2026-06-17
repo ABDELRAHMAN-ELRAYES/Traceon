@@ -1,7 +1,15 @@
 from .runner import Runner
 from .parser import ReportParser
-from .models import RunResult, ReportModel, Packet, ValidationError, DecodeError, Summary
+from .models import (
+    RunResult,
+    ReportModel,
+    Packet,
+    ValidationError,
+    DecodeError,
+    Summary,
+)
 from .exceptions import AnalyzerNotFoundError, AnalyzerTimeoutError, ReportParseError
+from .asserter import assert_report, ReportAsserter
 
 __all__ = [
     "Runner",
@@ -15,4 +23,6 @@ __all__ = [
     "AnalyzerNotFoundError",
     "AnalyzerTimeoutError",
     "ReportParseError",
+    "ReportAsserter",
+    "assert_report",
 ]
