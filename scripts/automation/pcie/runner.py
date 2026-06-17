@@ -2,9 +2,9 @@ from typing import List
 import os
 import shutil
 import subprocess
-from models import RunResult
-from exceptions import AnalyzerNotFoundError, AnalyzerTimeoutError
-from parser import ReportParser
+from .models import RunResult
+from .exceptions import AnalyzerNotFoundError, AnalyzerTimeoutError
+from .parser import ReportParser
 
 
 class Runner:
