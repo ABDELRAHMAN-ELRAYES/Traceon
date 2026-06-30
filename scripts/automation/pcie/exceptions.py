@@ -7,3 +7,6 @@ class AnalyzerTimeoutError(TimeoutError):
 class ReportParseError(ValueError):
     """Raised when the output report file cannot be parsed as JSON or XML."""
     pass
+class BaselineNotFoundError(FileNotFoundError):
+    """Raised when the specified baseline file path does not exist."""
+    pass

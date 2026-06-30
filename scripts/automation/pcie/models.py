@@ -1,4 +1,4 @@
-from __future__ import annotations
+from typing import Any
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 
@@ -90,3 +90,23 @@ class ReportModel:
     packets: List[Packet] = field(default_factory=list)
     validation_errors: List[ValidationError] = field(default_factory=list)
     malformed_packets: List[MalformedPacket] = field(default_factory=list)
+
+# Regression Models
+@dataclass
+class FieldChange:
+    field: str
+    expected: Any
+    actual: Any
+
+
+@dataclass
+class RegressionResult:
+    passed: bool
+    changes: List[FieldChange] = field(default_factory=list)
+    error: str = ""
+
+
+@dataclass
+class SuiteResult:
+    all_passed: bool
+    results: List[RegressionResult] = field(default_factory=list)

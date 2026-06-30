@@ -104,7 +104,7 @@ class ReportParser:
         is_malformed = bool(pkt_data.get("is_malformed", False))
         tlp_info = None
 
-        if not is_malformed and "tlp" in pkt_data:
+        if not is_malformed and pkt_data.get("tlp") is not None:
             tlp_data = pkt_data["tlp"]
             attr_data = tlp_data.get("attr", {})
             attr = TLPAttributes(
