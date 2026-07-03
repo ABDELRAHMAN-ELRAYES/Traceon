@@ -16,6 +16,7 @@ from .exceptions import (
 )
 from .asserter import assert_report, ReportAsserter
 from .regression import FieldChange, RegressionResult, SuiteResult, RegressionRunner
+from .aggregator import ConsolidatedReport, aggregate
 
 __all__ = [
     "Runner",
@@ -36,5 +37,7 @@ __all__ = [
     "RegressionResult",
     "SuiteResult",
     "RegressionRunner",
+    "ConsolidatedReport",
+    "aggregate",
 ]
 
