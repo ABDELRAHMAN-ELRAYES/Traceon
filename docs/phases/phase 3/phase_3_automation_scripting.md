@@ -108,7 +108,7 @@ Phase 3 is an **external control layer** that sits above Phase 1 and Phase 2 wit
 |---|---|
 | FR-SCR-01 | The Phase 3 API shall provide a function to invoke the Phase 1 analyzer with a specified input trace path and output report path, returning a `RunResult`. |
 | FR-SCR-02 | The API shall allow the caller to specify the output report format as JSON or XML for each invocation. |
-| FR-SCR-03 | The API shall capture the full standard output stream, the full standard error stream, and the integer exit code of the analyzer process and make all three available on the returned `RunResult`. |
+| FR-SCR-03 | The API shall capture the full execution output stream, the full execution error stream, and the integer exit code of the analyzer process and make all three available on the returned `RunResult` (as `execution_output` and `execution_error`). |
 | FR-SCR-04 | If the analyzer executable cannot be found at the configured path, the API shall raise a typed `AnalyzerNotFoundError` before attempting to start the process. |
 | FR-SCR-05 | The API shall support a configurable per-invocation timeout expressed in seconds. If the analyzer process has not exited within the timeout period, the process shall be terminated and an `AnalyzerTimeoutError` shall be raised with the trace file path identified in the message. |
 | FR-SCR-06 | By default, the run function is synchronous and blocking: the caller does not proceed until the analyzer subprocess has exited and the `RunResult` is fully populated. |
@@ -121,7 +121,7 @@ Phase 3 is an **external control layer** that sits above Phase 1 and Phase 2 wit
 | FR-BATCH-02 | A failure on any individual trace file — including analyzer timeout, non-zero exit code, or report parse failure — must not interrupt the processing of subsequent trace files in the batch. All failures are captured in the corresponding `RunResult`. |
 | FR-BATCH-03 | The batch function shall return a list of `RunResult` objects, one per trace file, in the same order as the input list. |
 | FR-BATCH-04 | Batch execution in Phase 3 is strictly sequential. Parallel execution across trace files is not supported in this phase and is deferred to Phase 4. |
-| FR-BATCH-05 | The batch function shall provide progress feedback to the caller after each trace file is processed, through either a caller-supplied callback function or an iterable interface that yields results incrementally. |
+| FR-BATCH-05 | (Optional) The batch function may support progress tracking or sequential feedback if required by caller specifications. |
 
 ### 4.3 Result Assertion
 
@@ -207,7 +207,7 @@ Baseline files are serialized `ReportModel` objects written as JSON. They use th
 Every script-driven analysis workflow follows this canonical sequence:
 
 1. Construct a `Runner` with the path to the `pcie_analyzer` executable.
-2. Call `Runner.run(trace_path, output_dir)` or `Runner.run_batch(trace_list, output_dir)`.
+2. Call `Runner.run(trace_path, output_path)` or `Runner.run_batch(trace_list, output_dir)`.
 3. Inspect each `RunResult` for success. If `success` is `False`, the `error` field explains the failure.
 4. Access the parsed report through `RunResult.report`, which is a fully typed `ReportModel`.
 5. Call assertion functions or regression comparison functions on the `ReportModel` as needed.
@@ -219,8 +219,8 @@ Every script-driven analysis workflow follows this canonical sequence:
 |---|---|---|
 | `success` | `bool` | `True` if the analyzer exited with code 0 and the report was successfully parsed |
 | `exit_code` | `int` | The integer exit code returned by the analyzer subprocess |
-| `stdout` | `str` | Full captured standard output from the analyzer |
-| `stderr` | `str` | Full captured standard error from the analyzer |
+| `execution_output` | `str` | Full captured execution output from the analyzer |
+| `execution_error` | `str` | Full captured execution error from the analyzer |
 | `trace_path` | `str` | The trace file path that was analyzed in this run |
 | `report_path` | `str` | The path where the output report was written |
 | `report` | `ReportModel` | The parsed report, populated on success; `None` on failure |
@@ -235,11 +235,11 @@ Every script-driven analysis workflow follows this canonical sequence:
 **`Runner(analyzer_path: str)`**
 Constructs a new Runner pointing to the Phase 1 analyzer executable at the given path. Raises `AnalyzerNotFoundError` immediately at construction time if the path does not resolve to an executable file.
 
-**`Runner.run(trace_path, output_dir, format="json", timeout_s=60) → RunResult`**
-Invokes the analyzer synchronously on the given trace file, writing the report to a file in `output_dir`. Returns a `RunResult`. If the analyzer cannot be started, raises `AnalyzerNotFoundError`. If the timeout expires before the analyzer exits, raises `AnalyzerTimeoutError` and terminates the process.
+**`Runner.run(trace_path, output_path, format="json", timeout_s=15) → RunResult`**
+Invokes the analyzer synchronously on the given trace file, writing the report to a file in `output_path`. Returns a `RunResult`. If the analyzer cannot be started, raises `AnalyzerNotFoundError`. If the timeout expires before the analyzer exits, raises `AnalyzerTimeoutError` and terminates the process.
 
-**`Runner.run_batch(trace_paths, output_dir, format="json", timeout_s=60, progress_callback=None) → list[RunResult]`**
-Invokes the analyzer once for each trace path in the list, in order. Failures on individual traces are captured in the corresponding `RunResult` and do not interrupt the batch. If `progress_callback` is supplied, it is called after each trace completes with the current index and the `RunResult`.
+**`Runner.run_batch(trace_paths, output_dir, format="json", timeout_s=60.0) → list[RunResult]`**
+Invokes the analyzer once for each trace path in the list, in order. Failures on individual traces are captured in the corresponding `RunResult` and do not interrupt the batch.
 
 ### 8.2 Module: `pcie_automation.asserter`
 
@@ -298,7 +298,7 @@ The Tcl API provides the same capabilities as the Python API through Tcl procedu
 Sets the path to the `pcie_analyzer` executable for all subsequent calls in the session. Must be called before any `pcie::run` invocations.
 
 **`pcie::run {trace_path output_dir {format json} {timeout 60}} → dict`**
-Invokes the analyzer as a subprocess. Returns a Tcl dictionary with the following keys: `success` (1 or 0), `exit_code`, `stdout`, `stderr`, `trace_path`, `report_path`, `report` (a nested dictionary of parsed report content, or empty string on failure), and `error`.
+Invokes the analyzer as a subprocess. Returns a Tcl dictionary with the following keys: `success` (1 or 0), `exit_code`, `execution_output`, `execution_error`, `trace_path`, `report_path`, `report` (a nested dictionary of parsed report content, or empty string on failure), and `error`.
 
 **`pcie::run_batch {trace_paths output_dir} → list`**
 Runs the analyzer for each path in `trace_paths` and returns a list of result dictionaries.
@@ -396,7 +396,7 @@ In all batch execution contexts, a failure on any individual trace file must not
 
 Phase 3 is considered complete and accepted when all of the following conditions are simultaneously satisfied:
 
-- [ ] `Runner.run` successfully invokes the Phase 1 analyzer, captures stdout/stderr/exit code, parses the report, and returns a fully populated `RunResult`.
+- [ ] `Runner.run` successfully invokes the Phase 1 analyzer, captures execution_output/execution_error/exit code, parses the report, and returns a fully populated `RunResult`.
 - [ ] `Runner.run_batch` processes a list of ten trace files sequentially, returns ten `RunResult` objects in the correct order, and correctly isolates failures to their respective results.
 - [ ] All six assertion types in `ReportAsserter` produce correct pass behavior with matching inputs and correct failure messages with mismatching inputs.
 - [ ] The regression suite correctly detects a deliberately introduced change in a run result and identifies the changed field accurately.
